@@ -1,13 +1,11 @@
-using BTCPayServer.NTag424;
 using PCSC;
 
-namespace BTCPayServer.NTag424.Tests;
-
-public record CardReaderContext(ISCardReader CardReader, IContextFactory ContextFactory, ISCardContext Context) : IDisposable
+namespace BTCPayServer.NTag424.PCSC;
+public record PCSCContext(ISCardReader CardReader, ISCardContext Context) : IDisposable
 {
-    public static CardReaderContext Create()
+    public static PCSCContext Create()
     {
-        var contextFactory = PCSC.ContextFactory.Instance;
+        var contextFactory = ContextFactory.Instance;
         var context = contextFactory.Establish(SCardScope.System);
         var readerNames = context.GetReaders();
         var readerName = readerNames.FirstOrDefault();
@@ -17,14 +15,13 @@ public record CardReaderContext(ISCardReader CardReader, IContextFactory Context
         }
         var reader = new SCardReader(context);
         reader.Connect(readerName, SCardShareMode.Shared, SCardProtocol.Any);
-        return new CardReaderContext(reader, contextFactory, context);
+        return new PCSCContext(reader, context);
     }
     public void Dispose()
     {
         CardReader.Dispose();
         Context.Dispose();
     }
-
     public Ntag424 CreateNTag424()
     {
         var transport = new PCSCAPDUTransport(this.CardReader);

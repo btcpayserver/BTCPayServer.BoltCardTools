@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using BTCPayServer.NTag424.PCSC;
 using NdefLibrary.Ndef;
 
 namespace BTCPayServer.NTag424.Tests;
@@ -136,7 +137,7 @@ public class UnitTest1
     [Fact]
     public async Task CanAuthenticate()
     {
-        using var ctx = CardReaderContext.Create();
+        using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var key = new AESKey(new byte[16]);
         await ntag.AuthenticateEV2First(0, key);
@@ -149,7 +150,7 @@ public class UnitTest1
     [Fact]
     public async Task CanChangeKey()
     {
-        using var ctx = CardReaderContext.Create();
+        using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var key1 = new AESKey(new byte[16]);
         var key2b = new byte[16];
@@ -167,7 +168,7 @@ public class UnitTest1
     [Fact]
     public async Task CanDoBoltcard()
     {
-        using var ctx = CardReaderContext.Create();
+        using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var key = new AESKey(new byte[16]);
         await ntag.AuthenticateEV2First(0, key);

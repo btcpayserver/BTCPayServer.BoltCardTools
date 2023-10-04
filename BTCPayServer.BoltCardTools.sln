@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.NTag424", "src\BTCPayServer.NTag424\BTCPayServer.NTag424.csproj", "{1AF51732-C36B-48DE-BEE5-4C5AA6EB0DAB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BoltCardTools.Tests", "tests\BoltCardTools.Tests.csproj", "{4ABD12CC-3B7C-4C8C-8576-19F32C402584}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.NTag424.Tests", "tests\BTCPayServer.NTag424.Tests.csproj", "{4ABD12CC-3B7C-4C8C-8576-19F32C402584}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{AE043F8E-1026-4502-8E7A-6F9C6C75EAF6}"
 	ProjectSection(SolutionItems) = preProject
@@ -37,5 +37,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ACB2349C-2A7E-4F07-9ABC-4B1C333ABBFC}
 	EndGlobalSection
 EndGlobal

@@ -1,3 +1,3 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("BoltCardTools.Tests")]
+[assembly: InternalsVisibleTo("BTCPayServer.NTag424.Tests")]
