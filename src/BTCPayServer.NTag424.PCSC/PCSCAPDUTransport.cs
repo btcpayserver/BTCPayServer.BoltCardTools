@@ -2,7 +2,7 @@ using System.Buffers;
 using PCSC;
 using PCSC.Extensions;
 
-namespace BTCPayServer.NTag424;
+namespace BTCPayServer.NTag424.PCSC;
 
 public class PCSCAPDUTransport : IAPDUTransport
 {

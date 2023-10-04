@@ -11,11 +11,11 @@
   <PropertyGroup>
     <Copyright>Copyright © BTCPay Server 2017</Copyright>
     <Description>A library to communicate with NTag 424 chips and assist BoltCard creation</Description>
-    <PackageIcon>../../BTCPayServer.png</PackageIcon>
+    <PackageIcon>BTCPayServer.png</PackageIcon>
     <PackageTags>ntag424,rfid</PackageTags>
     <PackageProjectUrl>https://github.com/btcpayserver/BTCPayServer.BoltCardTools/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/btcpayserver/BTCPayServer.BoltCardTools/</RepositoryUrl>
-    <PackageReadmeFile>https://github.com/btcpayserver/BTCPayServer.BoltCardTools/Readme.md</PackageReadmeFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
@@ -33,4 +33,9 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\BTCPayServer.png" Pack="true" PackagePath="\"/>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+  
 </Project>
