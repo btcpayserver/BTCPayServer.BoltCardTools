@@ -23,7 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\BoltCardTools.csproj" />
     <ProjectReference Include="..\src\BTCPayServer.NTag424\BTCPayServer.NTag424.csproj" />
   </ItemGroup>
 
