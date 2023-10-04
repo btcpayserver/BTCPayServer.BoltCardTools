@@ -95,16 +95,6 @@ public class AESKey
         }
         return Derive(sv2);
     }
-    //AESKey SesSDMFileReadENCKey(AESKey key, byte[] uid, int counter)
-    //{
-    //	byte[] sv1 =
-    //	{
-    //		0xc3, 0x3c, 0x00, 0x01, 0x00, 0x80,
-    //		uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6],
-    //		((byte)counter), (byte)(counter >> 8), (byte)(counter >> 16)
-    //	};
-    //	return key.Derive(sv1);
-    //}
     private static byte[] AesEncrypt(byte[] key, byte[] iv, byte[] data, CipherMode mode = CipherMode.CBC)
     {
         using MemoryStream ms = new MemoryStream();
