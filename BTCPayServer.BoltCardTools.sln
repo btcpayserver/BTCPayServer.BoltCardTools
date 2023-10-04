@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoltCardTools", "src\BoltCardTools.csproj", "{1AF51732-C36B-48DE-BEE5-4C5AA6EB0DAB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.NTag424", "src\BTCPayServer.NTag424\BTCPayServer.NTag424.csproj", "{1AF51732-C36B-48DE-BEE5-4C5AA6EB0DAB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoltCardTools.Tests", "tests\BoltCardTools.Tests.csproj", "{4ABD12CC-3B7C-4C8C-8576-19F32C402584}"
 EndProject
