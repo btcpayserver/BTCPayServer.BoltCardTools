@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using NdefLibrary.Ndef;
 
-namespace BoltCardTools.Tests;
+namespace BTCPayServer.NTag424.Tests;
 
 public class UnitTest1
 {

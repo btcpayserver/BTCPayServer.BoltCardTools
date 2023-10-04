@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public enum AccessCondition
 {

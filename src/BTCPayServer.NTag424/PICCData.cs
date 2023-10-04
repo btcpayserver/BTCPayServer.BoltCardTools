@@ -1,7 +1,7 @@
 
 using System;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public record PICCData(byte[]? Uid, int? Counter)
 {

@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using static BoltCardTools.Helpers;
+using static BTCPayServer.NTag424.Helpers;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public class AESKey
 {

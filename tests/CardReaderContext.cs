@@ -1,6 +1,7 @@
+using BTCPayServer.NTag424;
 using PCSC;
 
-namespace BoltCardTools.Tests;
+namespace BTCPayServer.NTag424.Tests;
 
 public record CardReaderContext(ISCardReader CardReader, IContextFactory ContextFactory, ISCardContext Context) : IDisposable
 {

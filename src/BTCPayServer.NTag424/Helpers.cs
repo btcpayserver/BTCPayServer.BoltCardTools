@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 internal class Helpers
 {

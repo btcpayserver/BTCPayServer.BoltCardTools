@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 internal static class Extensions
 {

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static BoltCardTools.Helpers;
+using static BTCPayServer.NTag424.Helpers;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public enum CommMode
 {
@@ -79,14 +79,14 @@ public record NTagCommand(string Name, byte CLA, byte INS, byte? P1, byte? P2, b
             if (Lc.HasValue)
             {
                 var realLc = Lc.Value;
-                if (CommMode is BoltCardTools.CommMode.Full)
+                if (CommMode is NTag424.CommMode.Full)
                 {
                     var encDataSize = realLc - CommandHeaderSize;
                     realLc = (byte)CommandHeaderSize;
                     realLc += (byte)(16 - (encDataSize % 16)); // Padding
                     realLc += 8; // Add mac
                 }
-                if (CommMode is BoltCardTools.CommMode.MAC)
+                if (CommMode is NTag424.CommMode.MAC)
                 {
                     realLc += 8; // Add mac
                 }
@@ -112,10 +112,10 @@ public record NTagCommand(string Name, byte CLA, byte INS, byte? P1, byte? P2, b
     {
         if (CommMode is null)
             throw new InvalidOperationException("CommMode isn't set");
-        if (CommMode is BoltCardTools.CommMode.Plain)
+        if (CommMode is NTag424.CommMode.Plain)
             return this;
         var data = Data;
-        if (CommMode is BoltCardTools.CommMode.Full && data is not null)
+        if (CommMode is NTag424.CommMode.Full && data is not null)
         {
             var nonEncrypted = data[0..CommandHeaderSize];
             var encrypted = data[CommandHeaderSize..];

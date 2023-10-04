@@ -3,9 +3,9 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using NdefLibrary.Ndef;
-using static BoltCardTools.Helpers;
+using static BTCPayServer.NTag424.Helpers;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public enum ISOLevel
 {

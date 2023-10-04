@@ -1,4 +1,4 @@
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public record NtagResponse(byte[] Data, ushort sw1sw2)
 {

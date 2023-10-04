@@ -1,6 +1,6 @@
 using System;
 
-namespace BoltCardTools;
+namespace BTCPayServer.NTag424;
 
 public class UnexpectedResponseException : Exception
 {
