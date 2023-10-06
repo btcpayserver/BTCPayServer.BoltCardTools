@@ -9,7 +9,8 @@ namespace BTCPayServer.NTag424;
 public class AESKey
 {
     public const int BLOCK_SIZE = 16;
-    byte[] _bytes;
+    readonly byte[] _bytes;
+    public static readonly AESKey Default = new AESKey(new byte[BLOCK_SIZE]);
     public byte[] ToBytes() => _bytes.ToArray();
     public static AESKey Parse(string hex)
     {
@@ -35,6 +36,11 @@ public class AESKey
     public AESKey Derive(byte[] input)
     {
         return new AESKey(CMac(input));
+    }
+    public byte[] Decrypt(string hex, byte[]? iv = null)
+    {
+        ArgumentNullException.ThrowIfNull(hex);
+        return Decrypt(hex.HexToBytes());
     }
     public byte[] Decrypt(ReadOnlySpan<byte> cypherText, byte[]? iv = null)
     {
@@ -175,5 +181,34 @@ public class AESKey
         }
 
         return r;
+    }
+
+
+    public override bool Equals(object? obj)
+    {
+        AESKey? item = obj as AESKey;
+        if (item is null)
+            return false;
+        return _bytes.IsSame(item._bytes);
+    }
+    public static bool operator ==(AESKey? a, AESKey? b)
+    {
+        if (System.Object.ReferenceEquals(a, b))
+            return true;
+        if (a is null || b is null)
+            return false;
+        return a._bytes.IsSame(b._bytes);
+    }
+
+    public static bool operator !=(AESKey? a, AESKey? b)
+    {
+        return !(a == b);
+    }
+
+    public override int GetHashCode()
+    {
+        var code = new HashCode();
+        code.AddBytes(_bytes);
+        return code.ToHashCode();
     }
 }

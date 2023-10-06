@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Text.RegularExpressions;
 using BTCPayServer.NTag424.PCSC;
 using NdefLibrary.Ndef;
+using Newtonsoft.Json.Linq;
 
 namespace BTCPayServer.NTag424.Tests;
 
@@ -67,7 +69,7 @@ public class UnitTest1
     [Fact]
     public void CanCreateCommModeMAC()
     {
-        var session = new Ntag424.Session(0, new AESKey(new byte[16]), new AESKey("8248134A386E86EB7FAF54A52E536CB6".HexToBytes()), "7A21085E".HexToBytes());
+        var session = new Ntag424.Session(0, AESKey.Default, new AESKey(new byte[16]), new AESKey("8248134A386E86EB7FAF54A52E536CB6".HexToBytes()), "7A21085E".HexToBytes());
         var command = NtagCommands.GetFileSettings with
         {
             CommMode = CommMode.MAC,
@@ -85,7 +87,7 @@ public class UnitTest1
     [Fact]
     public void CanCreateCommModeFull()
     {
-        var session = new Ntag424.Session(0, new AESKey("7305E2CCA5B0377617CDBFEB96C9B358".HexToBytes()), new AESKey("8B485037C8C2FB400D79BF0AB956F28F".HexToBytes()), "856C1841".HexToBytes());
+        var session = new Ntag424.Session(0, AESKey.Default, new AESKey("7305E2CCA5B0377617CDBFEB96C9B358".HexToBytes()), new AESKey("8B485037C8C2FB400D79BF0AB956F28F".HexToBytes()), "856C1841".HexToBytes());
         var command = NtagCommands.WriteData with
         {
             CommMode = CommMode.Full,
@@ -170,15 +172,23 @@ public class UnitTest1
     {
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
-        var key = new AESKey(new byte[16]);
-        await ntag.AuthenticateEV2First(0, key);
-        await ntag.SetupBoltcard("http://test.com");
+        var initialKey = AESKey.Default;
+        var keys = new BoltcardKeys(
+            IssuerKey: new AESKey("00000000000000000000000000000001".HexToBytes()),
+            EncryptionKey: new AESKey("00000000000000000000000000000002".HexToBytes()),
+            AuthenticationKey: new AESKey("00000000000000000000000000000002".HexToBytes()));
+        //await ntag.ResetCard(keys);
+        await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var message = await ntag.ReadNDef();
         var uri = new NdefUriRecord(message[0]).Uri;
-        var p = Regex.Match(uri, "p=([^&]*)&").Groups[1].Value.ToLowerInvariant();
-        var c = Regex.Match(uri, "c=(.*)").Groups[1].Value.ToLowerInvariant();
-        var piccData = key.DecryptSun(p.HexToBytes());
-        Assert.Equal(c, key.GetSunMac(piccData).ToHex());
+        var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
+        var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
+        var piccData = PICCData.Create(keys.EncryptionKey.Decrypt(p));
+        var expectedMac = keys.AuthenticationKey.GetSunMac(piccData);
+        var expectedMacStr = Convert.ToHexString(expectedMac, 0, expectedMac.Length);
+        var actualMacStr = c;
+        Assert.Equal(expectedMacStr, c);
+        await ntag.ResetCard(keys);
     }
 
     [Fact]

@@ -21,7 +21,7 @@ public enum DataFile
 
 public class Ntag424
 {
-    public record Session(int KeyNo, AESKey ENCKey, AESKey MACKey, byte[] TransactionId)
+    public record Session(int KeyNo, AESKey Key, AESKey ENCKey, AESKey MACKey, byte[] TransactionId)
     {
         public int Counter { get; set; }
 
@@ -194,7 +194,7 @@ public class Ntag424
         var macKey = key.Derive(Concat(
             "5AA500010080".HexToBytes(),
             rndMix));
-        var session = new Session(keyNo, encKey, macKey, tid)
+        var session = new Session(keyNo, key, encKey, macKey, tid)
         {
             Counter = sessionCounter
         };
@@ -275,6 +275,7 @@ public class Ntag424
             P2 = 2,
             Le = size
         })).Data;
+        CurrentSession = null;
         return NdefMessage.FromByteArray(data);
     }
 
@@ -362,10 +363,45 @@ public class Ntag424
                 data
             )
         });
+        if (keyNo == 0)
+            CurrentSession = null;
     }
 
-    public async Task SetupBoltcard(string lnurlw)
+    public async Task ResetCard(BoltcardKeys keys)
     {
+        if (CurrentSession is null)
+            await AuthenticateEV2First(0, keys.IssuerKey);
+        if (keys.IssuerKey != CurrentSession!.Key)
+            await AuthenticateEV2NonFirst(0, keys.IssuerKey);
+
+        if (CurrentSession!.KeyNo != 0)
+            throw new InvalidOperationException("Authentication required with KeyNo 0");
+
+        await ChangeFileSettings(file: DataFile.NDEF, new FileSettings(DataFile.NDEF));
+
+        await ChangeKey(2, AESKey.Default, keys.AuthenticationKey);
+        await ChangeKey(1, AESKey.Default, keys.EncryptionKey);
+        await ChangeKey(0, AESKey.Default);
+    }
+
+    /// <summary>
+    /// Setup a bolt card
+    /// </summary>
+    /// <param name="issuerKey">The AppMasterKey, the key that must be used to reset the card or change settings.</param>
+    /// <param name="encryptionKey">The key used to encrypt p=</param>
+    /// <param name="authenticationKey">The key used for authentifying the card</param>
+    /// <param name="lnurlw"></param>
+    /// <returns></returns>
+    public async Task SetupBoltcard(
+        string lnurlw,
+        BoltcardKeys oldKeys,
+        BoltcardKeys newKeys)
+    {
+        if (CurrentSession is null)
+            await AuthenticateEV2First(0, oldKeys.IssuerKey);
+        if (newKeys.IssuerKey != CurrentSession!.Key && CurrentSession.KeyNo != 0)
+            throw new InvalidOperationException("Authentication required with KeyNo 0");
+
         if (!lnurlw.Contains('?', StringComparison.OrdinalIgnoreCase))
             lnurlw += "?";
         else
@@ -405,5 +441,16 @@ public class Ntag424
         };
         await ChangeFileSettings(fileSettings: settings);
 
+        if (newKeys.EncryptionKey != oldKeys.EncryptionKey)
+            await ChangeKey(1, newKeys.EncryptionKey, oldKeys.EncryptionKey);
+
+        if (newKeys.AuthenticationKey != oldKeys.AuthenticationKey)
+            await ChangeKey(2, newKeys.AuthenticationKey, oldKeys.AuthenticationKey);
+
+        if (newKeys.IssuerKey != CurrentSession!.Key)
+        {
+            await ChangeKey(0, newKeys.IssuerKey); // No need of old key for 0
+            await AuthenticateEV2First(0, newKeys.IssuerKey);
+        }
     }
 }
