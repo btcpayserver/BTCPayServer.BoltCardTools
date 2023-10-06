@@ -115,7 +115,7 @@ var ntag = ctx.CreateNTag424();
 var keys = new BoltcardKeys(
     IssuerKey: new AESKey("00000000000000000000000000000001".HexToBytes()),
     EncryptionKey: new AESKey("00000000000000000000000000000002".HexToBytes()),
-    AuthenticationKey: new AESKey("00000000000000000000000000000002".HexToBytes()));
+    AuthenticationKey: new AESKey("00000000000000000000000000000003".HexToBytes()));
 var lnurlwService = "lnurlw://test.com";
 
 // Note `BoltcardKeys.Default` assumes the card hasn't been setup yet.
