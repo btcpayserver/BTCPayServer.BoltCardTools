@@ -58,6 +58,16 @@ public class AESKey
     {
         return AesEncrypt(_bytes, iv ?? new byte[BLOCK_SIZE], clearText, mode);
     }
+
+    public bool CheckSunMac(byte[] mac, PICCData piccData, byte[]? payload = null)
+    {
+        return this.GetSunMac(piccData, payload).IsSame(mac);
+    }
+    public bool CheckSunMac(string mac, PICCData piccData, byte[]? payload = null)
+    {
+        return CheckSunMac(mac.HexToBytes(), piccData, payload);
+    }
+
     public byte[] GetSunMac(PICCData piccData, byte[]? payload = null)
     {
         return GetSunMac(piccData.Uid, piccData.Counter, payload);

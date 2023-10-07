@@ -141,7 +141,7 @@ public class UnitTest1
     {
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
-        var key = new AESKey(new byte[16]);
+        var key = AESKey.Default;
         await ntag.AuthenticateEV2First(0, key);
         var uid1 = await ntag.GetCardUID();
         await ntag.AuthenticateEV2NonFirst(0, key);
@@ -154,7 +154,7 @@ public class UnitTest1
     {
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
-        var key1 = new AESKey(new byte[16]);
+        var key1 = AESKey.Default;
         var key2b = new byte[16];
         key2b[^1] = 1;
         var key2 = new AESKey(key2b);
@@ -184,10 +184,7 @@ public class UnitTest1
         var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
         var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
         var piccData = PICCData.Create(keys.EncryptionKey.Decrypt(p));
-        var expectedMac = keys.AuthenticationKey.GetSunMac(piccData);
-        var expectedMacStr = Convert.ToHexString(expectedMac, 0, expectedMac.Length);
-        var actualMacStr = c;
-        Assert.Equal(expectedMacStr, c);
+        Assert.True(keys.AuthenticationKey.CheckSunMac(c, piccData));
         await ntag.ResetCard(keys);
     }
 

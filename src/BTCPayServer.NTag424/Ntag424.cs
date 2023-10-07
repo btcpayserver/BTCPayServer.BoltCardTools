@@ -240,6 +240,14 @@ public class Ntag424
         return (await SendAPDU(NtagCommands.GetCardUID)).Data;
     }
 
+    public async Task SetRandomUID()
+    {
+        await SendAPDU(NtagCommands.SetConfiguration with
+        {
+            Data = new byte[] { 0x00, 0x02 }
+        });
+    }
+
     public async Task<FileSettings> GetFileSettings(DataFile file = DataFile.NDEF)
     {
         return new FileSettings((await SendAPDU(NtagCommands.GetFileSettings with
@@ -416,7 +424,6 @@ public class Ntag424
         var ndefBytes = ndef.ToByteArray();
         var pIndex = Array.LastIndexOf(ndefBytes, (byte)'p') + 4;
         var cIndex = Array.LastIndexOf(ndefBytes, (byte)'c') + 4;
-
         var settings = new FileSettings(DataFile.NDEF)
         {
             AccessRights = new()
@@ -440,7 +447,7 @@ public class Ntag424
             PICCDataOffset = pIndex
         };
         await ChangeFileSettings(fileSettings: settings);
-
+        await SetRandomUID();
         if (newKeys.EncryptionKey != oldKeys.EncryptionKey)
             await ChangeKey(1, newKeys.EncryptionKey, oldKeys.EncryptionKey);
 

@@ -88,14 +88,8 @@ var piccData = PICCData.Create(encryptionKey.Decrypt(p));
 // the proper real `authenticationKey` of the card.
 var authenticationKey = AESKey.Default;
 
-var expectedMac = authenticationKey.GetSunMac(piccData);
-var expectedMacStr = Convert.ToHexString(expectedMac, 0, expectedMac.Length);
-
-var actualMacStr = c;
-if (expectedMacStr != c)
-{
+if (!authenticationKey.CheckSunMac(c, piccData))
     throw new Exception("Invalid card");
-}
 
 // The LNUrlw service should also check `piccData.Counter` is always increasing between payments to avoid replay attacks.
 ```

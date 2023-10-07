@@ -107,7 +107,7 @@ internal class Helpers
 0xbdbdf21cu, 0xcabac28au, 0x53b39330u, 0x24b4a3a6u, 0xbad03605u, 0xcdd70693u, 0x54de5729u, 0x23d967bfu,
 0xb3667a2eu, 0xc4614ab8u, 0x5d681b02u, 0x2a6f2b94u, 0xb40bbe37u, 0xc30c8ea1u, 0x5a05df1bu, 0x2d02ef8du,
     };
-    public static uint CRCJam(byte[] data)
+    internal static uint CRCJam(byte[] data)
     {
         uint crc = 0xffffffff;
         for (int index = 0; index < data.Length; index++)
