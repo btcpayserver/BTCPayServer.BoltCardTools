@@ -127,7 +127,7 @@ public class Ntag424
     {
         return AuthenticateEV2(keyNo, key, true);
     }
-    public async Task<Session> AuthenticateEV2(int keyNo, AESKey key, bool first)
+    async Task<Session> AuthenticateEV2(int keyNo, AESKey key, bool first)
     {
         int sessionCounter = CurrentSession?.Counter ?? 0;
         if (first)
