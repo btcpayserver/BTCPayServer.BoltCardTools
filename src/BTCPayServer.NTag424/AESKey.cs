@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using static BTCPayServer.NTag424.Helpers;
 
@@ -78,10 +79,6 @@ public class AESKey
         var derived = SesSDMFileReadMACKey(uid, counter);
         var cmac = derived.CMac(payload);
         return Truncate(cmac);
-    }
-    public PICCData DecryptSun(byte[] data)
-    {
-        return PICCData.Create(Decrypt(data));
     }
     AESKey SesSDMFileReadMACKey(byte[]? uid, int? counter)
     {
@@ -220,5 +217,53 @@ public class AESKey
         var code = new HashCode();
         code.AddBytes(_bytes);
         return code.ToHashCode();
+    }
+
+    public static AESKey Random()
+    {
+        return new AESKey(RandomNumberGenerator.GetBytes(BLOCK_SIZE));
+    }
+
+    /// <summary>
+    /// Create a new boltcard encryption key from the issuer key and a batch id
+    /// CMacDerive(encryptionKey, "2d003f77" + batchId) where batchId is LE encoded on 4 bytes.
+    /// </summary>
+    /// <param name="batch">Batch id</param>
+    /// <returns>The encryption key for the batch of boltcard</returns>
+    public AESKey DeriveEncryptionKey(uint batchId = 0)
+    {
+        return Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x77 },
+            UIntToBytesLE(batchId)));
+    }
+
+    /// <summary>
+    /// Create a new boltcard authentication key from the encryption key and uid.
+    /// CMacDerive(encryptionKey, "2d003f78" + uid)
+    /// </summary>
+    /// <param name="uid">UID of the card</param>
+    /// <returns>Authentication key of the card</returns>
+    public AESKey DeriveAuthenticationKey(byte[] uid)
+    {
+        return Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
+            uid));
+    }
+
+    /// <summary>
+    /// Create a new boltcard k3 and k4 key from the encryption key and uid.
+    /// Those keys aren't used by the remark of ntag 424 cards indicates it should be set on the card.
+    /// CMacDerive(encryptionKey, "2d003f79" + uid), CMacDerive(encryptionKey, "2d003f7a" + uid)
+    /// </summary>
+    /// <param name="uid">UID of the card</param>
+    /// <returns>The 0x03 and 0x04 keys</returns>
+    public (AESKey K1, AESKey K2) DeriveK3K4(byte[] uid)
+    {
+        return (Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x79 },
+            uid)),
+            Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x7a },
+            uid)));
     }
 }

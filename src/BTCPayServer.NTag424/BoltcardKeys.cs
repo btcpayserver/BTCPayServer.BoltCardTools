@@ -1,3 +1,4 @@
+using System;
 using System.Security.Cryptography.X509Certificates;
 
 namespace BTCPayServer.NTag424;
@@ -20,5 +21,13 @@ public record BoltcardKeys(
     public static BoltcardKeys Default = new BoltcardKeys(AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default);
     public BoltcardKeys() : this (AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default)
     {
+    }
+
+    public static BoltcardKeys CreateDeterministicKeys(AESKey issuerKey, byte[] uid, uint batchId = 0)
+    {
+        var encryptionKey = issuerKey.DeriveEncryptionKey(batchId);
+        var authenticationKey = encryptionKey.DeriveAuthenticationKey(uid);
+        (var k3, var k4) = encryptionKey.DeriveK3K4(uid);
+        return new BoltcardKeys(issuerKey, encryptionKey, authenticationKey, k3, k4);
     }
 }

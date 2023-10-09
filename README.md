@@ -122,6 +122,38 @@ await ntag.SetupBoltcard(lnurlwService, BoltcardKeys.Default, keys);
 // You can reset the card to its factory state with `await ntag.ResetCard(keys);`
 ```
 
+### How to setup a bolt card with deterministic keys, and decrypt the PICCData
+
+Deterministic keys are useful if you want to be able to recover the keys of the card from a seed.
+* The issuer can recover the keys of any card, just with a batchId and the issuer key.
+* The LNUrlw service can recover the keys of any card (except the issuer key), just with the encryption key.
+
+Note that you can reset the card to its factory state by only knowing the `issuerKey` with `await ntag.ResetCard(issuerKey);`.
+
+```csharp
+using BTCPayServer.NTag424;
+using BTCPayServer.NTag424.PCSC;
+using System;
+using System.Collections;
+
+using var ctx = PCSCContext.Create();
+var ntag = ctx.CreateNTag424();
+
+await ntag.AuthenticateEV2First(0, AESKey.Default);
+var uid = await ntag.GetCardUID();
+
+var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
+var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
+var lnurlwService = "lnurlw://test.com";
+
+var encryptionKey = keys.EncryptionKey;
+var piccData = PICCData.BoltcardDecrypt(encryptionKey, p, c);
+
+// If this method didn't throw an exception, it has been successfully decrypted and authenticated.
+
+// You can reset the card with `await ntag.ResetCard(issuerKey);`.
+```
+
 ## License
 
 MIT
