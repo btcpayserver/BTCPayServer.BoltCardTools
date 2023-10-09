@@ -176,7 +176,9 @@ public class UnitTest1
         var keys = new BoltcardKeys(
             IssuerKey: new AESKey("00000000000000000000000000000001".HexToBytes()),
             EncryptionKey: new AESKey("00000000000000000000000000000002".HexToBytes()),
-            AuthenticationKey: new AESKey("00000000000000000000000000000003".HexToBytes()));
+            AuthenticationKey: new AESKey("00000000000000000000000000000003".HexToBytes()),
+            K3: new AESKey("00000000000000000000000000000004".HexToBytes()),
+            K4: new AESKey("00000000000000000000000000000005".HexToBytes()));
         //await ntag.ResetCard(keys);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var message = await ntag.ReadNDef();

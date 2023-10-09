@@ -387,6 +387,8 @@ public class Ntag424
 
         await ChangeFileSettings(file: DataFile.NDEF, new FileSettings(DataFile.NDEF));
 
+        await ChangeKey(4, AESKey.Default, keys.K4);
+        await ChangeKey(3, AESKey.Default, keys.K3);
         await ChangeKey(2, AESKey.Default, keys.AuthenticationKey);
         await ChangeKey(1, AESKey.Default, keys.EncryptionKey);
         await ChangeKey(0, AESKey.Default);
@@ -453,6 +455,12 @@ public class Ntag424
 
         if (newKeys.AuthenticationKey != oldKeys.AuthenticationKey)
             await ChangeKey(2, newKeys.AuthenticationKey, oldKeys.AuthenticationKey);
+
+        if (newKeys.K3 != oldKeys.K3)
+            await ChangeKey(3, newKeys.K3, oldKeys.K3);
+
+        if (newKeys.K4 != oldKeys.K4)
+            await ChangeKey(4, newKeys.K4, oldKeys.K4);
 
         if (newKeys.IssuerKey != CurrentSession!.Key)
         {
