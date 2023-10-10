@@ -375,6 +375,12 @@ public class Ntag424
             CurrentSession = null;
     }
 
+    /// <summary>
+    /// Reset the card to factory settings using current application keys using deterministic keys
+    /// </summary>
+    /// <param name="issuerKey">The issuer key</param>
+    /// <param name="batchId">The batch id</param>
+    /// <returns></returns>
     public async Task ResetCard(AESKey issuerKey, uint batchId = 0)
     {
         if (CurrentSession is null)
@@ -385,6 +391,13 @@ public class Ntag424
         var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId);
         await ResetCard(keys);
     }
+
+    /// <summary>
+    /// Reset the card to factory settings using current application keys
+    /// </summary>
+    /// <param name="keys">The application keys</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">Authenticated with a key different than K0</exception>
     public async Task ResetCard(BoltcardKeys keys)
     {
         if (CurrentSession is null)
@@ -395,6 +408,7 @@ public class Ntag424
         if (CurrentSession!.KeyNo != 0)
             throw new InvalidOperationException("Authentication required with KeyNo 0");
 
+        await WriteNDef(new NdefMessage());
         await ChangeFileSettings(file: DataFile.NDEF, new FileSettings(DataFile.NDEF));
 
         await ChangeKey(4, AESKey.Default, keys.K4);
