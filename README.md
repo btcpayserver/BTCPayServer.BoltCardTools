@@ -9,11 +9,15 @@ Content:
 * [BTCPayServer.NTag424](https://www.nuget.org/packages/BTCPayServer.NTag424) is the base library implementing the NTag424 protocol, this library is platform agnostic.
 * [BTCPayServer.NTag424.PCSC](https://www.nuget.org/packages/BTCPayServer.NTag424.PCSC) is a library implementing APDU transport via [PCSC-Sharp](https://github.com/danm-de/pcsc-sharp) for supporting Windows/Linux/Mac.
 
+We tested the following smart card reader:
+* [identiv utrust 3700 f](https://www.identiv.com/products/logical-access-control/smart-card-readers-writers/contactless-smart-card-readers-writers/3700f)
+* [ACR122U-A9](https://www.acs.com.hk/en/products/3/acr122u-usb-nfc-reader/)
+
 ## Examples
 
 ### How to read the UID of an NTag 424 smart card
 
-Plug in a smart card reader, such as the [identiv utrust 3700 f](https://www.identiv.com/products/logical-access-control/smart-card-readers-writers/contactless-smart-card-readers-writers/3700f), and place an NTag 424 smart card on it.
+Plug in a smart card reader, and place an NTag 424 smart card on it.
 
 Reference the nuget package [BTCPayServer.NTag424.PCSC](https://www.nuget.org/packages/BTCPayServer.NTag424.PCSC) in your project.
 
