@@ -128,7 +128,7 @@ await ntag.SetupBoltcard(lnurlwService, BoltcardKeys.Default, keys);
 
 ### How to setup a bolt card with deterministic keys, and decrypt the PICCData
 
-Deterministic keys are useful if you want to be able to recover the keys of the card from a seed.
+[Deterministic keys](https://github.com/boltcard/boltcard/blob/main/docs/DETERMINISTIC.md) are useful if you want to be able to recover the keys of the card from a seed.
 * The issuer can recover the keys of any card, just with a batchId and the issuer key.
 * The LNUrlw service can recover the keys of any card (except the issuer key), just with the encryption key.
 
