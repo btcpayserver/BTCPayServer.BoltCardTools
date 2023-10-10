@@ -3,18 +3,11 @@ using System.Text.RegularExpressions;
 using BTCPayServer.NTag424.PCSC;
 using NdefLibrary.Ndef;
 using Newtonsoft.Json.Linq;
-using Xunit.Abstractions;
 
 namespace BTCPayServer.NTag424.Tests;
 
 public class UnitTest1
 {
-    public ITestOutputHelper Logs { get; }
-
-    public UnitTest1(ITestOutputHelper logs)
-    {
-        Logs = logs;
-    }
     [Fact]
     public void CanCreateAPDUFromNtagCommand()
     {
@@ -175,16 +168,6 @@ public class UnitTest1
     }
 
     [Fact]
-    public async Task CanCheckOriginality()
-    {
-        using var ctx = PCSCContext.Create();
-        var ntag = ctx.CreateNTag424();
-        await ntag.AuthenticateEV2First(0, AESKey.Default);
-        await ntag.CheckOriginality();
-        await ntag.CheckOriginality();
-    }
-
-    [Fact]
     public async Task CanDoBoltcard()
     {
         using var ctx = PCSCContext.Create();
@@ -204,22 +187,6 @@ public class UnitTest1
         var piccData = PICCData.Create(keys.EncryptionKey.Decrypt(p));
         Assert.True(keys.AuthenticationKey.CheckSunMac(c, piccData));
         await ntag.ResetCard(keys);
-    }
-
-    [Fact]
-    public void TestDeterministicBoltcard()
-    {
-        var uid = "04a39493cc8680".HexToBytes();
-        uint batch = 1;
-        var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batch);
-        Logs.WriteLine("UID = " + uid.ToHex());
-        Logs.WriteLine("Batch = " + Helpers.UIntToBytesLE(1).ToHex());
-        Logs.WriteLine("K0 = " + issuerKey.ToBytes().ToHex());
-        Logs.WriteLine("K1 = " + keys.EncryptionKey.ToBytes().ToHex());
-        Logs.WriteLine("K2 = " + keys.AuthenticationKey.ToBytes().ToHex());
-        Logs.WriteLine("K3 = " + keys.K3.ToBytes().ToHex());
-        Logs.WriteLine("K4 = " + keys.K4.ToBytes().ToHex());
     }
 
     [Fact]

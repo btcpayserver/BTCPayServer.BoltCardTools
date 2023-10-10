@@ -76,6 +76,24 @@ public record NTagCommand(string Name, byte CLA, byte INS, byte? P1, byte? P2, b
         list.Add(P2.Value);
         if (Data != null)
         {
+            if (Lc.HasValue)
+            {
+                var realLc = Lc.Value;
+                if (CommMode is NTag424.CommMode.Full)
+                {
+                    var encDataSize = realLc - CommandHeaderSize;
+                    realLc = (byte)CommandHeaderSize;
+                    realLc += (byte)(16 - (encDataSize % 16)); // Padding
+                    realLc += 8; // Add mac
+                }
+                if (CommMode is NTag424.CommMode.MAC)
+                {
+                    realLc += 8; // Add mac
+                }
+
+                if (realLc != Data.Length)
+                    throw new InvalidOperationException("Invalid Data length");
+            }
             list.Add((byte)(Data.Length));
             list.AddRange(Data);
         }
@@ -157,9 +175,9 @@ internal class NtagCommands
     internal readonly static NTagCommand GetVersionPart3 = new(Name: "GetVersionPart3", CLA: 0x90, INS: 0xAF, P1: 0, P2: 0, Lc: null, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: CommMode.MAC);
     internal readonly static NTagCommand ISOReadBinary = new(Name: "ISOReadBinary", CLA: 0x00, INS: 0xB0, P1: null, P2: null, Lc: null, Data: null, Le: null, ExpectedStatus: 0x9000, CommMode: CommMode.Plain);
     internal readonly static NTagCommand ReadData = new(Name: "ReadData", CLA: 0x90, INS: 0xAD, P1: 0, P2: 0, Lc: null, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: null, CommandHeaderSize: 7);
-    internal readonly static NTagCommand Read_Sig = new(Name: "Read_Sig", CLA: 0x90, INS: 0x3C, P1: 0, P2: 0, Lc: 1, Data: new byte[1], Le: 0, ExpectedStatus: 0x9190, CommMode: CommMode.Full, CommandHeaderSize: 1);
+    internal readonly static NTagCommand Read_Sig = new(Name: "Read_Sig", CLA: 0x90, INS: 0x3C, P1: 0, P2: 0, Lc: 1, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: CommMode.Full);
     internal readonly static NTagCommand ISOSelectFile = new(Name: "ISOSelectFile", CLA: 0x00, INS: 0xA4, P1: null, P2: null, Lc: null, Data: null, Le: null, ExpectedStatus: 0x9000, CommMode: CommMode.Plain);
-    internal readonly static NTagCommand SetConfiguration = new(Name: "SetConfiguration", CLA: 0x90, INS: 0x5C, P1: 0, P2: 0, Lc: null, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: CommMode.Full, CommandHeaderSize: 0);
+    internal readonly static NTagCommand SetConfiguration = new(Name: "SetConfiguration", CLA: 0x90, INS: 0x5C, P1: 0, P2: 0, Lc: null, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: CommMode.Full, CommandHeaderSize: 1);
     internal readonly static NTagCommand ISOUpdateBinary = new(Name: "ISOUpdateBinary", CLA: 0x00, INS: 0xD6, P1: null, P2: null, Lc: null, Data: null, Le: null, ExpectedStatus: 0x9000, CommMode: CommMode.Plain);
     internal readonly static NTagCommand WriteData = new(Name: "WriteData", CLA: 0x90, INS: 0x8D, P1: 0, P2: 0, Lc: null, Data: null, Le: 0, ExpectedStatus: 0x9100, CommMode: null, CommandHeaderSize: 7);
 }

@@ -3,10 +3,6 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using NdefLibrary.Ndef;
-using Org.BouncyCastle.Asn1.X9;
-using Org.BouncyCastle.Crypto.EC;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto.Signers;
 using static BTCPayServer.NTag424.Helpers;
 
 namespace BTCPayServer.NTag424;
@@ -97,7 +93,6 @@ public class Ntag424
         Transport = transport;
     }
     public Session? CurrentSession { get; private set; }
-    public static ECDsaSigner NXPPubKey { get; }
 
     public async Task IsoSelectFile(ISOLevel level)
     {
@@ -378,33 +373,6 @@ public class Ntag424
         });
         if (keyNo == 0)
             CurrentSession = null;
-    }
-
-    static Ntag424()
-    {
-        var ecP = CustomNamedCurves.GetByName("secp224r1");
-        var domainParameters = new ECDomainParameters(ecP.Curve, ecP.G, ecP.N, ecP.H, ecP.GetSeed());
-        var pubkey = new ECPublicKeyParameters(
-                ecP.Curve.DecodePoint("048A9B380AF2EE1B98DC417FECC263F8449C7625CECE82D9B916C992DA209D68422B81EC20B65A66B5102A61596AF3379200599316A00A1410".HexToBytes()),
-                domainParameters);
-        NXPPubKey = new ECDsaSigner();
-        NXPPubKey.Init(false, pubkey);
-    }
-
-    /// <summary>
-    /// Make sure the card is genuine
-    /// </summary>
-    /// <returns>The UID</returns>
-    /// <exception cref="SecurityException">Invalid signature</exception>
-    public async Task<byte[]> CheckOriginality()
-    {
-        var uid = await GetCardUID();
-        var resp = await SendAPDU(NtagCommands.Read_Sig);
-        var r = new Org.BouncyCastle.Math.BigInteger(1, resp.Data[..28]);
-        var s = new Org.BouncyCastle.Math.BigInteger(1, resp.Data[28..]);
-        if (!NXPPubKey.VerifySignature(uid, r, s))
-            throw new SecurityException("Invalid signature");
-        return uid;
     }
 
     public async Task ResetCard(AESKey issuerKey, uint batchId = 0)
