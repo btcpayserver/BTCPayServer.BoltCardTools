@@ -13,16 +13,15 @@ public class PCSCAPDUTransport : IAPDUTransport
         CardReader = cardReader;
     }
 
-    public Task<NtagResponse> SendAPDU(NTagCommand apdu)
+    public Task<NtagResponse> SendAPDU(byte[] apdu)
     {
         return Task.Factory.StartNew(() =>
         {
-            var bytes = apdu.ToBytes();
             var resp = ArrayPool<byte>.Shared.Rent(512);
             try
             {
                 int received = resp.Length;
-                var sc = CardReader.Transmit(bytes, resp, ref received);
+                var sc = CardReader.Transmit(apdu, resp, ref received);
                 if (sc != SCardError.Success)
                     sc.Throw();
                 var sw1sw2 = (ushort)(resp[received - 2] << 8 | resp[received - 1]);

@@ -226,7 +226,7 @@ public class Ntag424
         if (CurrentSession is not null)
             CurrentSession.Counter++;
 
-        var resp = await Transport.SendAPDU(command);
+        var resp = await Transport.SendAPDU(command.ToBytes());
         command.ThrowIfUnexpected(resp);
         if (commandMode is not CommMode.Plain && CurrentSession is not null)
         {

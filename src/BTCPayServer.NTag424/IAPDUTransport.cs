@@ -4,5 +4,5 @@ namespace BTCPayServer.NTag424;
 
 public interface IAPDUTransport
 {
-    Task<NtagResponse> SendAPDU(NTagCommand apdu);
+    Task<NtagResponse> SendAPDU(byte[] apdu);
 }

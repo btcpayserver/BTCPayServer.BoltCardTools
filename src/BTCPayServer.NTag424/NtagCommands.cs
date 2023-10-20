@@ -76,24 +76,6 @@ public record NTagCommand(string Name, byte CLA, byte INS, byte? P1, byte? P2, b
         list.Add(P2.Value);
         if (Data != null)
         {
-            if (Lc.HasValue)
-            {
-                var realLc = Lc.Value;
-                if (CommMode is NTag424.CommMode.Full)
-                {
-                    var encDataSize = realLc - CommandHeaderSize;
-                    realLc = (byte)CommandHeaderSize;
-                    realLc += (byte)(16 - (encDataSize % 16)); // Padding
-                    realLc += 8; // Add mac
-                }
-                if (CommMode is NTag424.CommMode.MAC)
-                {
-                    realLc += 8; // Add mac
-                }
-
-                if (realLc != Data.Length)
-                    throw new InvalidOperationException("Invalid Data length");
-            }
             list.Add((byte)(Data.Length));
             list.AddRange(Data);
         }
