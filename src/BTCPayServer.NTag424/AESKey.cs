@@ -280,4 +280,16 @@ public class AESKey
             new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
             uid));
     }
+
+    /// <summary>
+    /// Get the ID from the UID and the encryption key (K1)
+    /// </summary>
+    /// <param name="uid">The UID</param>
+    /// <returns>The ID</returns>
+    public byte[] GetId(byte[] uid)
+    {
+        return Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x7b },
+            uid)).ToBytes().Take(7).ToArray();
+    }
 }

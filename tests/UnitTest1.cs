@@ -85,6 +85,7 @@ public class UnitTest1
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
         Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
         Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
+        Logs.WriteLine("ID: " + keys.EncryptionKey.GetId(uid).ToHex());
     }
 
     [Fact]
@@ -220,7 +221,7 @@ public class UnitTest1
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
         var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
-        
+
         // await ntag.ResetCard(keys);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var message = await ntag.ReadNDef();
