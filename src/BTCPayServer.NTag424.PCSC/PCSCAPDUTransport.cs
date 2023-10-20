@@ -13,8 +13,9 @@ public class PCSCAPDUTransport : IAPDUTransport
         CardReader = cardReader;
     }
 
-    public Task<NtagResponse> SendAPDU(byte[] apdu)
+    public Task<NtagResponse> SendAPDU(byte[] apdu, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.Factory.StartNew(() =>
         {
             var resp = ArrayPool<byte>.Shared.Rent(512);

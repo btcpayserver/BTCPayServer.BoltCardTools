@@ -1,6 +1,7 @@
 using System;
 using System.Security;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using NdefLibrary.Ndef;
 using static BTCPayServer.NTag424.Helpers;
@@ -94,7 +95,7 @@ public class Ntag424
     }
     public Session? CurrentSession { get; private set; }
 
-    public async Task IsoSelectFile(ISOLevel level)
+    public async Task IsoSelectFile(ISOLevel level, CancellationToken cancellationToken = default)
     {
         await SendAPDU(NtagCommands.ISOSelectFile with
         {
@@ -106,9 +107,9 @@ public class Ntag424
                 ISOLevel.Application => "d2760000850101",
                 _ => throw new ArgumentException(nameof(level))
             }).HexToBytes()
-        });
+        }, cancellationToken);
     }
-    public async Task IsoSelectFile(DataFile file)
+    public async Task IsoSelectFile(DataFile file, CancellationToken cancellationToken = default)
     {
         await SendAPDU(NtagCommands.ISOSelectFile with
         {
@@ -116,18 +117,18 @@ public class Ntag424
             P2 = 0x00,
             Data = new byte[] { (byte)((int)file >> 8), (byte)file },
             Le = 0
-        });
+        }, cancellationToken);
     }
 
-    public Task<Session> AuthenticateEV2NonFirst(int keyNo, AESKey key)
+    public Task<Session> AuthenticateEV2NonFirst(int keyNo, AESKey key, CancellationToken cancellationToken = default)
     {
-        return AuthenticateEV2(keyNo, key, false);
+        return AuthenticateEV2(keyNo, key, false, cancellationToken);
     }
-    public Task<Session> AuthenticateEV2First(int keyNo, AESKey key)
+    public Task<Session> AuthenticateEV2First(int keyNo, AESKey key, CancellationToken cancellationToken = default)
     {
-        return AuthenticateEV2(keyNo, key, true);
+        return AuthenticateEV2(keyNo, key, true, cancellationToken);
     }
-    async Task<Session> AuthenticateEV2(int keyNo, AESKey key, bool first)
+    async Task<Session> AuthenticateEV2(int keyNo, AESKey key, bool first, CancellationToken cancellationToken = default)
     {
         int sessionCounter = CurrentSession?.Counter ?? 0;
         if (first)
@@ -148,14 +149,14 @@ public class Ntag424
             resp = await SendAPDU(NtagCommands.AuthenticateEV2FirstPart1 with
             {
                 Data = $"{(byte)keyNo:x2}03000000".HexToBytes()
-            });
+            }, cancellationToken);
         }
         else
         {
             resp = await SendAPDU(NtagCommands.AuthenticateEV2NonFirstPart1 with
             {
                 Data = new byte[] { (byte)keyNo }
-            });
+            }, cancellationToken);
         }
         var rndB = key.Decrypt(resp.Data);
         var rndBp = RotateLeft(rndB);
@@ -165,7 +166,7 @@ public class Ntag424
         resp = await SendAPDU(secondPart with
         {
             Data = encRnd
-        });
+        }, cancellationToken);
 
         var data = key.Decrypt(resp.Data);
         var rndAp = RotateLeft(rndA);
@@ -202,7 +203,7 @@ public class Ntag424
         return session;
     }
 
-    private async Task<NtagResponse> SendAPDU(NTagCommand command)
+    private async Task<NtagResponse> SendAPDU(NTagCommand command, CancellationToken cancellationToken)
     {
         CommMode commandMode;
         if (command.CommMode is CommMode m)
@@ -226,7 +227,7 @@ public class Ntag424
         if (CurrentSession is not null)
             CurrentSession.Counter++;
 
-        var resp = await Transport.SendAPDU(command.ToBytes());
+        var resp = await Transport.SendAPDU(command.ToBytes(), cancellationToken);
         command.ThrowIfUnexpected(resp);
         if (commandMode is not CommMode.Plain && CurrentSession is not null)
         {
@@ -235,27 +236,27 @@ public class Ntag424
         return resp;
     }
 
-    public async Task<byte[]> GetCardUID()
+    public async Task<byte[]> GetCardUID(CancellationToken cancellationToken = default)
     {
-        return (await SendAPDU(NtagCommands.GetCardUID)).Data;
+        return (await SendAPDU(NtagCommands.GetCardUID, cancellationToken)).Data;
     }
 
-    public async Task SetRandomUID()
+    public async Task SetRandomUID(CancellationToken cancellationToken = default)
     {
         await SendAPDU(NtagCommands.SetConfiguration with
         {
             Data = new byte[] { 0x00, 0x02 }
-        });
+        }, cancellationToken);
     }
 
-    public async Task<FileSettings> GetFileSettings(DataFile file = DataFile.NDEF)
+    public async Task<FileSettings> GetFileSettings(DataFile file = DataFile.NDEF, CancellationToken cancellationToken = default)
     {
         return new FileSettings((await SendAPDU(NtagCommands.GetFileSettings with
         {
             Data = GetFileNo(file)
-        })).Data, false);
+        }, cancellationToken)).Data, false);
     }
-    public async Task ChangeFileSettings(DataFile file = DataFile.NDEF, FileSettings? fileSettings = null)
+    public async Task ChangeFileSettings(DataFile file = DataFile.NDEF, FileSettings? fileSettings = null, CancellationToken cancellationToken = default)
     {
         fileSettings ??= new FileSettings(file);
         await SendAPDU(NtagCommands.ChangeFileSettings with
@@ -264,10 +265,10 @@ public class Ntag424
                 GetFileNo(file),
                 fileSettings.ToBytes()
             )
-        });
+        }, cancellationToken);
     }
 
-    public async Task<NdefMessage> ReadNDef()
+    public async Task<NdefMessage> ReadNDef(CancellationToken cancellationToken = default)
     {
         await IsoSelectFile(ISOLevel.Application);
         await IsoSelectFile(DataFile.NDEF);
@@ -276,18 +277,18 @@ public class Ntag424
             P1 = 0,
             P2 = 0,
             Le = 2
-        })).Data[1];
+        }, cancellationToken)).Data[1];
         var data = (await SendAPDU(NtagCommands.ISOReadBinary with
         {
             P1 = 0,
             P2 = 2,
             Le = size
-        })).Data;
+        }, cancellationToken)).Data;
         CurrentSession = null;
         return NdefMessage.FromByteArray(data);
     }
 
-    public async Task<byte[]> ReadFile(DataFile file, int offset, int length)
+    public async Task<byte[]> ReadFile(DataFile file, int offset, int length, CancellationToken cancellationToken = default)
     {
         var commMode = await GetCommMode(file, AccessRight.Read);
         return (await SendAPDU(NtagCommands.ReadData with
@@ -299,7 +300,7 @@ public class Ntag424
                 UIntTo3BytesLE(offset),
                 UIntTo3BytesLE(length)
             )
-        })).Data;
+        }, cancellationToken)).Data;
     }
 
     private async Task<CommMode> GetCommMode(DataFile file, AccessRight requiredRight)
@@ -323,7 +324,7 @@ public class Ntag424
         } };
     }
 
-    public async Task WriteNDef(NdefMessage message)
+    public async Task WriteNDef(NdefMessage message, CancellationToken cancellationToken = default)
     {
         var ndefMessageBytes = message.ToByteArray();
         var content = new byte[220]; // Normally we have 256 bytes, but APDU has a size limit we need some margin
@@ -339,10 +340,10 @@ public class Ntag424
                 UIntTo3BytesLE(content.Length),
                 content
             )
-        });
+        }, cancellationToken);
     }
 
-    public async Task ChangeKey(int keyNo, AESKey newKey, AESKey? oldKey = null, int version = 0)
+    public async Task ChangeKey(int keyNo, AESKey newKey, AESKey? oldKey = null, int version = 0, CancellationToken cancellationToken = default)
     {
         if (CurrentSession is null || CurrentSession.KeyNo != 0)
             throw new InvalidOperationException("Authentication required with KeyNo 0");
@@ -370,7 +371,7 @@ public class Ntag424
                 new byte[] { (byte)keyNo },
                 data
             )
-        });
+        }, cancellationToken);
         if (keyNo == 0)
             CurrentSession = null;
     }
