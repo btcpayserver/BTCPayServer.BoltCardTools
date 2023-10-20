@@ -50,8 +50,7 @@ using NdefLibrary.Ndef;
 
 using var ctx = PCSCContext.Create();
 var ntag = ctx.CreateNTag424();
-var message = await ntag.ReadNDef();
-var uri = new NdefUriRecord(message[0]).Uri;
+var uri = await ntag.TryReadNDefURI();
 Console.WriteLine($"Card URI: {uri}");
 ```
 

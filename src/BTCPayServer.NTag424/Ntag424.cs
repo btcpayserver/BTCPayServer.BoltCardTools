@@ -268,10 +268,24 @@ public class Ntag424
         }, cancellationToken);
     }
 
+    public async Task<Uri?> TryReadNDefURI(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var message = await this.ReadNDef(cancellationToken);
+            var uri = new NdefUriRecord(message[0]).Uri;
+            return new Uri(uri, UriKind.Absolute);
+        }
+        catch (NdefException)
+        {
+            return null;
+        }
+    }
+
     public async Task<NdefMessage> ReadNDef(CancellationToken cancellationToken = default)
     {
-        await IsoSelectFile(ISOLevel.Application);
-        await IsoSelectFile(DataFile.NDEF);
+        await IsoSelectFile(ISOLevel.Application, cancellationToken);
+        await IsoSelectFile(DataFile.NDEF, cancellationToken);
         var size = (await SendAPDU(NtagCommands.ISOReadBinary with
         {
             P1 = 0,
@@ -290,7 +304,7 @@ public class Ntag424
 
     public async Task<byte[]> ReadFile(DataFile file, int offset, int length, CancellationToken cancellationToken = default)
     {
-        var commMode = await GetCommMode(file, AccessRight.Read);
+        var commMode = await GetCommMode(file, AccessRight.Read, cancellationToken);
         return (await SendAPDU(NtagCommands.ReadData with
         {
             CommMode = commMode,
@@ -303,11 +317,11 @@ public class Ntag424
         }, cancellationToken)).Data;
     }
 
-    private async Task<CommMode> GetCommMode(DataFile file, AccessRight requiredRight)
+    private async Task<CommMode> GetCommMode(DataFile file, AccessRight requiredRight, CancellationToken cancellationToken)
     {
         if (CurrentSession is null)
             return CommMode.Plain;
-        var settings = await GetFileSettings(file);
+        var settings = await GetFileSettings(file, cancellationToken);
         if (!settings.IsAllowed(CurrentSession.KeyNo, requiredRight))
             throw new SecurityException($"The key {CurrentSession.KeyNo} doesn't have the necessary permissions");
         return settings.CommMode;
@@ -333,7 +347,7 @@ public class Ntag424
         Array.Copy(ndefMessageBytes, 0, content, 2, Math.Min(content.Length - 2, ndefMessageBytes.Length));
         await SendAPDU(NtagCommands.WriteData with
         {
-            CommMode = await GetCommMode(DataFile.NDEF, AccessRight.Write),
+            CommMode = await GetCommMode(DataFile.NDEF, AccessRight.Write, cancellationToken),
             Data = Concat(
                 GetFileNo(DataFile.NDEF),
                 new byte[] { 0x00, 0x00, 0x00 },
