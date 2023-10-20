@@ -401,9 +401,9 @@ public class Ntag424
     public async Task ResetCard(BoltcardKeys keys)
     {
         if (CurrentSession is null)
-            await AuthenticateEV2First(0, keys.IssuerKey);
-        if (keys.IssuerKey != CurrentSession!.Key)
-            await AuthenticateEV2NonFirst(0, keys.IssuerKey);
+            await AuthenticateEV2First(0, keys.AppMasterKey);
+        if (keys.AppMasterKey != CurrentSession!.Key)
+            await AuthenticateEV2NonFirst(0, keys.AppMasterKey);
 
         if (CurrentSession!.KeyNo != 0)
             throw new InvalidOperationException("Authentication required with KeyNo 0");
@@ -432,8 +432,8 @@ public class Ntag424
         BoltcardKeys newKeys)
     {
         if (CurrentSession is null)
-            await AuthenticateEV2First(0, oldKeys.IssuerKey);
-        if (newKeys.IssuerKey != CurrentSession!.Key && CurrentSession.KeyNo != 0)
+            await AuthenticateEV2First(0, oldKeys.AppMasterKey);
+        if (newKeys.AppMasterKey != CurrentSession!.Key && CurrentSession.KeyNo != 0)
             throw new InvalidOperationException("Authentication required with KeyNo 0");
 
         if (!lnurlw.Contains('?', StringComparison.OrdinalIgnoreCase))
@@ -486,10 +486,10 @@ public class Ntag424
         if (newKeys.K4 != oldKeys.K4)
             await ChangeKey(4, newKeys.K4, oldKeys.K4);
 
-        if (newKeys.IssuerKey != CurrentSession!.Key)
+        if (newKeys.AppMasterKey != CurrentSession!.Key)
         {
-            await ChangeKey(0, newKeys.IssuerKey); // No need of old key for 0
-            await AuthenticateEV2First(0, newKeys.IssuerKey);
+            await ChangeKey(0, newKeys.AppMasterKey); // No need of old key for 0
+            await AuthenticateEV2First(0, newKeys.AppMasterKey);
         }
     }
 }

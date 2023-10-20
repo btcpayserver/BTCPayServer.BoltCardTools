@@ -238,26 +238,28 @@ public class AESKey
     }
 
     /// <summary>
-    /// Create a new boltcard authentication key from the encryption key and uid.
-    /// CMacDerive(encryptionKey, "2d003f78" + uid)
+    /// Create a new boltcard app master key from the issuer key and a uid
+    /// CMacDerive(encryptionKey, "2d003f76" + uid)
     /// </summary>
-    /// <param name="uid">UID of the card</param>
-    /// <returns>Authentication key of the card</returns>
-    public AESKey DeriveAuthenticationKey(byte[] uid)
+    /// <param name="batch">The UID</param>
+    /// <returns>The app master key for the batch of boltcard</returns>
+    public AESKey DeriveAppMasterKey(byte[] uid)
     {
         return Derive(Helpers.Concat(
-            new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
+            new byte[] { 0x2d, 0x00, 0x3f, 0x76 },
             uid));
     }
 
     /// <summary>
     /// Create a new boltcard k3 and k4 key from the encryption key and uid.
     /// Those keys aren't used by the remark of ntag 424 cards indicates it should be set on the card.
-    /// CMacDerive(encryptionKey, "2d003f79" + uid), CMacDerive(encryptionKey, "2d003f7a" + uid)
+    /// K2=CMacDerive(encryptionKey, "2d003f78" + uid)
+    /// K3=CMacDerive(encryptionKey, "2d003f79" + uid)
+    /// K4=CMacDerive(encryptionKey, "2d003f7a" + uid)
     /// </summary>
     /// <param name="uid">UID of the card</param>
     /// <returns>The 0x03 and 0x04 keys</returns>
-    public (AESKey K1, AESKey K2) DeriveK3K4(byte[] uid)
+    public (AESKey K3, AESKey K4) DeriveK3K4(byte[] uid)
     {
         return (Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x79 },
@@ -265,5 +267,17 @@ public class AESKey
             Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x7a },
             uid)));
+    }
+
+    /// <summary>
+    /// Derive boltcard key K2, used for authentication
+    /// </summary>
+    /// <param name="uid">UID of the card</param>
+    /// <returns>The K2 key</returns>
+    public AESKey DeriveAuthenticationKey(byte[] uid)
+    {
+        return Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
+            uid));
     }
 }

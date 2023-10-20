@@ -3,11 +3,18 @@ using System.Text.RegularExpressions;
 using BTCPayServer.NTag424.PCSC;
 using NdefLibrary.Ndef;
 using Newtonsoft.Json.Linq;
+using Xunit.Abstractions;
 
 namespace BTCPayServer.NTag424.Tests;
 
 public class UnitTest1
 {
+    public ITestOutputHelper Logs { get; }
+
+    public UnitTest1(ITestOutputHelper logs)
+    {
+        Logs = logs;
+    }
     [Fact]
     public void CanCreateAPDUFromNtagCommand()
     {
@@ -64,6 +71,20 @@ public class UnitTest1
     {
         var actual = Ntag424.Session.PaddingForEnc(data.HexToBytes()).ToHex();
         Assert.Equal(padded, actual);
+    }
+
+    [Fact]
+    public void CanDeriveDeterministicBoltcard()
+    {
+        var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
+        var batchId = 1U;
+        var uid = "04a39493cc8680".HexToBytes();
+        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId);
+        Logs.WriteLine("K0: " + keys.AppMasterKey.ToBytes().ToHex());
+        Logs.WriteLine("K1: " + keys.EncryptionKey.ToBytes().ToHex());
+        Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
+        Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
+        Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
     }
 
     [Fact]
@@ -144,7 +165,7 @@ public class UnitTest1
         var key = AESKey.Default;
         await ntag.AuthenticateEV2First(0, key);
         var uid1 = await ntag.GetCardUID();
-        await ntag.AuthenticateEV2NonFirst(0, key);
+        await ntag.AuthenticateEV2NonFirst(1, key);
         var uid2 = await ntag.GetCardUID();
         Assert.Equal(uid1.ToHex(), uid2.ToHex());
     }
@@ -173,7 +194,7 @@ public class UnitTest1
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var keys = new BoltcardKeys(
-            IssuerKey: new AESKey("00000000000000000000000000000001".HexToBytes()),
+            AppMasterKey: new AESKey("00000000000000000000000000000001".HexToBytes()),
             EncryptionKey: new AESKey("00000000000000000000000000000002".HexToBytes()),
             AuthenticationKey: new AESKey("00000000000000000000000000000003".HexToBytes()),
             K3: new AESKey("00000000000000000000000000000004".HexToBytes()),
