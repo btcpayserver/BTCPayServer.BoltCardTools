@@ -26,9 +26,9 @@ public record BoltcardKeys(
     public static BoltcardKeys CreateDeterministicKeys(AESKey issuerKey, byte[] uid, uint batchId = 0)
     {
         var encryptionKey = issuerKey.DeriveEncryptionKey(batchId);
-        var appMasterKey = issuerKey.DeriveAppMasterKey(uid);
-        var authKey = encryptionKey.DeriveAuthenticationKey(uid);
-        var k = encryptionKey.DeriveK3K4(uid);
+        var appMasterKey = issuerKey.DeriveAppMasterKey(uid, batchId);
+        var authKey = encryptionKey.DeriveAuthenticationKey(uid, batchId);
+        var k = encryptionKey.DeriveK3K4(uid, batchId);
         return new BoltcardKeys(appMasterKey, encryptionKey, authKey, k.K3, k.K4);
     }
 }

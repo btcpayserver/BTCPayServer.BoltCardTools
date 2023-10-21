@@ -85,7 +85,7 @@ public class UnitTest1
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
         Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
         Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
-        Logs.WriteLine("ID: " + keys.EncryptionKey.GetId(uid).ToHex());
+        Logs.WriteLine("ID: " + keys.EncryptionKey.GetId(uid, batchId).ToHex());
     }
 
     [Fact]
@@ -172,6 +172,19 @@ public class UnitTest1
     }
 
     [Fact]
+    public async Task Reset()
+    {
+        var issuerKey = new AESKey("01000000000000000000000000000000".HexToBytes());
+        using var ctx = PCSCContext.Create();
+        var enc = issuerKey.DeriveEncryptionKey();
+        var ntag = ctx.CreateNTag424();
+        await ntag.AuthenticateEV2First(1, enc);
+        var uid = await ntag.GetCardUID();
+        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid);
+        await ntag.ResetCard(keys);
+    }
+
+    [Fact]
     public async Task CanChangeKey()
     {
         using var ctx = PCSCContext.Create();
@@ -187,6 +200,12 @@ public class UnitTest1
         await ntag.ChangeKey(1, key1);
         await ntag.ChangeKey(1, key2, key1);
         await ntag.ChangeKey(1, key1, key2);
+    }
+
+    [Fact]
+    public async Task CanWaitForCard()
+    {
+        await PCSCContext.WaitForCard();
     }
 
     [Fact]

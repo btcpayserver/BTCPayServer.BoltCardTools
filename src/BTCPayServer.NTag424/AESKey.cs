@@ -226,7 +226,7 @@ public class AESKey
 
     /// <summary>
     /// Create a new boltcard encryption key from the issuer key and a batch id
-    /// CMacDerive(encryptionKey, "2d003f77" + batchId) where batchId is LE encoded on 4 bytes.
+    /// K1 = CMacDerive(encryptionKey, "2d003f77" + batchId) where batchId is LE encoded on 4 bytes.
     /// </summary>
     /// <param name="batch">Batch id</param>
     /// <returns>The encryption key for the batch of boltcard</returns>
@@ -243,41 +243,44 @@ public class AESKey
     /// </summary>
     /// <param name="batch">The UID</param>
     /// <returns>The app master key for the batch of boltcard</returns>
-    public AESKey DeriveAppMasterKey(byte[] uid)
+    public AESKey DeriveAppMasterKey(byte[] uid, uint batchId = 0)
     {
         return Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x76 },
+            UIntToBytesLE(batchId),
             uid));
     }
 
     /// <summary>
-    /// Create a new boltcard k3 and k4 key from the encryption key and uid.
+    /// Create a new boltcard k3 and k4 key from the issuer key and uid.
     /// Those keys aren't used by the remark of ntag 424 cards indicates it should be set on the card.
-    /// K2=CMacDerive(encryptionKey, "2d003f78" + uid)
-    /// K3=CMacDerive(encryptionKey, "2d003f79" + uid)
-    /// K4=CMacDerive(encryptionKey, "2d003f7a" + uid)
+    /// K3=CMacDerive(encryptionKey, "2d003f79" + batchId + uid)
+    /// K4=CMacDerive(encryptionKey, "2d003f7a" + batchId + uid)
     /// </summary>
     /// <param name="uid">UID of the card</param>
     /// <returns>The 0x03 and 0x04 keys</returns>
-    public (AESKey K3, AESKey K4) DeriveK3K4(byte[] uid)
+    public (AESKey K3, AESKey K4) DeriveK3K4(byte[] uid, uint batchId = 0)
     {
         return (Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x79 },
+            UIntToBytesLE(batchId),
             uid)),
             Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x7a },
+            UIntToBytesLE(batchId),
             uid)));
     }
 
     /// <summary>
-    /// Derive boltcard key K2, used for authentication
+    /// Derive boltcard key K2 from the issuer key, used for authentication
     /// </summary>
     /// <param name="uid">UID of the card</param>
     /// <returns>The K2 key</returns>
-    public AESKey DeriveAuthenticationKey(byte[] uid)
+    public AESKey DeriveAuthenticationKey(byte[] uid, uint batchId = 0)
     {
         return Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
+            UIntToBytesLE(batchId),
             uid));
     }
 
@@ -286,10 +289,11 @@ public class AESKey
     /// </summary>
     /// <param name="uid">The UID</param>
     /// <returns>The ID</returns>
-    public byte[] GetId(byte[] uid)
+    public byte[] GetId(byte[] uid, uint batchId = 0)
     {
         return Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x7b },
+            UIntToBytesLE(batchId),
             uid)).ToBytes().Take(7).ToArray();
     }
 }
