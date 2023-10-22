@@ -394,7 +394,6 @@ public class Ntag424
     /// Reset the card to factory settings using current application keys using deterministic keys
     /// </summary>
     /// <param name="issuerKey">The issuer key</param>
-    /// <param name="batchId">The batch id</param>
     /// <returns></returns>
     public async Task ResetCard(DeterministicBatchKeys batchKeys)
     {
