@@ -149,9 +149,9 @@ var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
 var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
 var lnurlwService = "lnurlw://test.com";
 
-var encryptionKey = keys.EncryptionKey;
-var piccData = PICCData.BoltcardDecrypt(encryptionKey, p, c);
-
+var piccData = PICCData.TryDeterministicBoltcardDecrypt(issuerKey, p, c, uid, batchId: 0);
+if (piccData == null)
+    throw new SecurityException("Impossible to decrypt with issuerKey");
 // If this method didn't throw an exception, it has been successfully decrypted and authenticated.
 
 // You can reset the card with `await ntag.ResetCard(issuerKey);`.

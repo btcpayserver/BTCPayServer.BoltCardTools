@@ -236,20 +236,19 @@ public class UnitTest1
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-        // await ntag.ResetCard(issuerKey);
+        //await ntag.ResetCard(issuerKey);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
         var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
 
-        // await ntag.ResetCard(keys);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var message = await ntag.ReadNDef();
         var uri = new NdefUriRecord(message[0]).Uri;
         var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
         var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
 
-        var encryptionKey = keys.EncryptionKey;
-        var piccData = PICCData.BoltcardDecrypt(encryptionKey, p, c);
+        var piccData = PICCData.TryDeterministicBoltcardDecrypt(issuerKey, p, c, batchId: 0);
+        Assert.NotNull(piccData);
         await ntag.ResetCard(issuerKey);
     }
 

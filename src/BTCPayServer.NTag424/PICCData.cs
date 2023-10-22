@@ -1,10 +1,24 @@
 
 using System;
+using System.Linq;
 using System.Runtime.Loader;
 using System.Security;
 
 namespace BTCPayServer.NTag424;
 
+public record BoltcardPICCData : PICCData
+{
+    public new byte[] Uid { get; }
+    public new int Counter { get; }
+    public BoltcardPICCData(byte[] Uid, int Counter): base(Uid, Counter)
+    {
+        this.Uid = Uid;
+        this.Counter = Counter;
+    }
+    public BoltcardPICCData(PICCData piccData) : this(piccData.Uid!, piccData.Counter!.Value)
+    {
+    }
+}
 public record PICCData(byte[]? Uid, int? Counter)
 {
     public static PICCData Create(ReadOnlySpan<byte> data)
@@ -30,16 +44,54 @@ public record PICCData(byte[]? Uid, int? Counter)
 
     /// <summary>
     /// Decrypt the PICCData from the BoltCard and check the checksum.
-    /// It assumes the authentication key has been derived from the encryption key. (ie. CMacDerive(encryptionKey, '2d003f78' + uid))
+    /// It assumes deterministic keys are used.
     /// </summary>
-    /// <param name="encryptionKey">The encryption key for p</param>
+    /// <param name="issuerKey">The issuer key to use for the derivation of K1 and K2</param>
+    /// <param name="p">The p= parameter from the lnurlw (encrypted PICCData)</param>
+    /// <param name="c">The c= parameter from the lnurlw (checksum)</param>
+    /// <param name="payload">Optional payload committed by c</param>
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static BoltcardPICCData? TryDeterministicBoltcardDecrypt(AESKey issuerKey, string p, string c, byte[]? payload = null, uint batchId = 0)
+    {
+        if (!Validate(p, c))
+            return null;
+        var encryptionKey = issuerKey.DeriveEncryptionKey(batchId);
+        var bytes = encryptionKey.Decrypt(p.HexToBytes());
+        if (bytes[0] != 0xc7)
+            return null;
+        var piccData = new BoltcardPICCData(Create(bytes));
+        var authenticationKey = issuerKey.DeriveAuthenticationKey(piccData.Uid, batchId);
+        if (!authenticationKey.CheckSunMac(c, piccData, payload))
+            return null;
+        return new BoltcardPICCData(piccData);
+    }
+
+    private static bool Validate(string p, string c)
+    {
+        if (p.Length != 32 || c.Length != 16)
+            return false;
+        foreach(var ch in p.Concat(c))
+        {
+            if (Extensions.IsDigitCore(ch) == 0xff)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Decrypt the PICCData from the Boltcard and check the checksum.
+    /// </summary>
+    /// <param name="encryptionKey">The encryption key (K1)</param>
+    /// <param name="authenticationKey">The authentication key (K2)</param>
     /// <param name="p">The p= parameter from the lnurlw (encrypted PICCData)</param>
     /// <param name="c">THe c= parameter from the lnurlw (checksum)</param>
     /// <param name="payload">Optional payload committed by c</param>
-    /// <returns>The PICCData if the checksum passed verification.</returns>
-    /// <exception cref="SecurityException">Invalid PICCData or checksum</exception>
-    public static PICCData BoltcardDecrypt(AESKey encryptionKey, string p, string c, byte[]? payload = null)
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static PICCData? TryBoltcardDecrypt(AESKey encryptionKey, AESKey authenticationKey, string p, string c, byte[]? payload = null)
     {
+        if (!Validate(p, c))
+            return null;
+
         var bytes = encryptionKey.Decrypt(p.HexToBytes());
         PICCData piccData;
         try
@@ -50,12 +102,8 @@ public record PICCData(byte[]? Uid, int? Counter)
         {
             throw new SecurityException("Invalid PICCData");
         }
-        if (piccData.Uid is null)
-            throw new SecurityException("No UID found in the PICCData");
-
-        var authenticationKey = encryptionKey.DeriveAuthenticationKey(piccData.Uid);
         if (!authenticationKey.CheckSunMac(c, piccData, payload))
-            throw new SecurityException("Incorrect checksum for the PICCDAta");
+            return null;
         return piccData;
     }
 }

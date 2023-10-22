@@ -42,7 +42,7 @@ internal static class Extensions
         return output;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static byte IsDigitCore(char c)
+    internal static byte IsDigitCore(char c)
     {
         return CharToHexLookup[c];
     }

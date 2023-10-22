@@ -398,10 +398,11 @@ public class Ntag424
     /// <returns></returns>
     public async Task ResetCard(AESKey issuerKey, uint batchId = 0)
     {
+        var encryptionKey = issuerKey.DeriveEncryptionKey(batchId);
         if (CurrentSession is null)
-            await AuthenticateEV2First(0, issuerKey);
+            await AuthenticateEV2First(1, encryptionKey);
         if (issuerKey != CurrentSession!.Key)
-            await AuthenticateEV2NonFirst(0, issuerKey);
+            await AuthenticateEV2NonFirst(1, encryptionKey);
         var uid = await GetCardUID();
         var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId);
         await ResetCard(keys);
