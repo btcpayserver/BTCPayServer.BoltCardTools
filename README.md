@@ -62,7 +62,6 @@ using BTCPayServer.NTag424.PCSC;
 using System;
 using System.Security;
 using System.Collections;
-using System.Text.RegularExpressions;
 
 // Set keys have you have setup the card
 var encryptionKey = AESKey.Default;
@@ -72,9 +71,7 @@ using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
 
 var uri = await ntag.TryReadNDefURI();
-var p = Regex.Match(uri.AbsoluteUri, "p=(.*?)&").Groups[1].Value;
-var c = Regex.Match(uri.AbsoluteUri, "c=(.*)").Groups[1].Value;
-var piccData = PICCData.TryBoltcardDecrypt(encryptionKey, authenticationKey, p, c);
+var piccData = PICCData.TryBoltcardDecrypt(encryptionKey, authenticationKey, uri);
 if (piccData == null)
     throw new SecurityException("Impossible to decrypt or validate");
 
@@ -120,8 +117,6 @@ using BTCPayServer.NTag424.PCSC;
 using System;
 using System.Security;
 using System.Collections;
-using System.Text.RegularExpressions;
-
 
 using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
@@ -133,10 +128,7 @@ var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
 var batchKeys = new DeterministicBatchKeys(issuerKey, BatchId: 0);
 
 var uri = await ntag.TryReadNDefURI();
-var p = Regex.Match(uri.AbsoluteUri, "p=(.*?)&").Groups[1].Value;
-var c = Regex.Match(uri.AbsoluteUri, "c=(.*)").Groups[1].Value;
-
-var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, p, c, uid);
+var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, uri, uid);
 if (piccData == null)
     throw new SecurityException("Impossible to decrypt with batchKeys");
 // If this method didn't throw an exception, it has been successfully decrypted and authenticated.

@@ -1,8 +1,10 @@
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.Loader;
 using System.Security;
+using System.Text.RegularExpressions;
 
 namespace BTCPayServer.NTag424;
 
@@ -46,6 +48,20 @@ public record PICCData(byte[]? Uid, int? Counter)
     /// Decrypt the PICCData from the BoltCard and check the checksum.
     /// </summary>
     /// <param name="batchKeys">The deterministic batch keys</param>
+    /// <param name="uri">The url with p= and c= parameters</param
+    /// <param name="payload">Optional payload committed by c</param>
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static BoltcardPICCData? TryDeterministicBoltcardDecrypt(DeterministicBatchKeys batchKeys, Uri? uri, byte[]? payload = null)
+    {
+        if (!ExtractPC(uri, out var p, out var c))
+            return null;
+        return TryDeterministicBoltcardDecrypt(batchKeys, p, c, payload);
+    }
+
+    /// <summary>
+    /// Decrypt the PICCData from the BoltCard and check the checksum.
+    /// </summary>
+    /// <param name="batchKeys">The deterministic batch keys</param>
     /// <param name="p">The p= parameter from the lnurlw (encrypted PICCData)</param>
     /// <param name="c">The c= parameter from the lnurlw (checksum)</param>
     /// <param name="payload">Optional payload committed by c</param>
@@ -75,6 +91,40 @@ public record PICCData(byte[]? Uid, int? Counter)
                 return false;
         }
         return true;
+    }
+
+    static bool ExtractPC(Uri? uri, [MaybeNullWhen(false)] out string p, [MaybeNullWhen(false)] out string c)
+    {
+        p = null;
+        c = null;
+        if (uri is null)
+            return false;
+        var queryStringIdx = uri.AbsoluteUri.IndexOf('?');
+        if (queryStringIdx == -1)
+            return false;
+        var queryString = uri.AbsoluteUri.Substring(queryStringIdx);
+        var pm = Regex.Match(queryString, "p=(.*?)&");
+        var cm = Regex.Match(queryString, "c=(.*)");
+        if (pm is null || cm is null)
+            return false;
+        p = pm.Groups[1].Value;
+        c = cm.Groups[1].Value;
+        return true;
+    }
+
+    /// <summary>
+    /// Decrypt the PICCData from the Boltcard and check the checksum.
+    /// </summary>
+    /// <param name="encryptionKey">The encryption key (K1)</param>
+    /// <param name="authenticationKey">The authentication key (K2)</param>
+    /// <param name="uri">The url with p= and c= parameters</param
+    /// <param name="payload">Optional payload committed by c</param>
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static PICCData? TryBoltcardDecrypt(AESKey encryptionKey, AESKey authenticationKey, Uri? uri, byte[]? payload = null)
+    {
+        if (!ExtractPC(uri, out var p, out var c))
+            return null;
+        return TryBoltcardDecrypt(encryptionKey, authenticationKey, p, c, payload);
     }
 
     /// <summary>

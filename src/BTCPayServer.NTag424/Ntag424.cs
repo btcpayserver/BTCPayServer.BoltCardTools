@@ -1,6 +1,7 @@
 using System;
 using System.Security;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using NdefLibrary.Ndef;
@@ -456,7 +457,7 @@ public class Ntag424
         else
             lnurlw += "&";
         lnurlw += "p=00000000000000000000000000000000&c=0000000000000000";
-
+        lnurlw = Regex.Replace(lnurlw, "^https?://", "lnurlw://");
         var ndef = new NdefMessage
         {
             new NdefUriRecord() { Uri = lnurlw }

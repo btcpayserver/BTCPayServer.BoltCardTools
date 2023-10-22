@@ -221,14 +221,12 @@ public class UnitTest1
             AuthenticationKey: new AESKey("00000000000000000000000000000003".HexToBytes()),
             K3: new AESKey("00000000000000000000000000000004".HexToBytes()),
             K4: new AESKey("00000000000000000000000000000005".HexToBytes()));
-        //await ntag.ResetCard(keys);
+        // await ntag.ResetCard(keys);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
-        var message = await ntag.ReadNDef();
-        var uri = new NdefUriRecord(message[0]).Uri;
-        var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
-        var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
-        var piccData = PICCData.Create(keys.EncryptionKey.Decrypt(p));
-        Assert.True(keys.AuthenticationKey.CheckSunMac(c, piccData));
+        var uri = await ntag.TryReadNDefURI();
+        Assert.StartsWith("lnurlw://test.com/?p=", uri?.AbsoluteUri);
+        var piccData = PICCData.TryBoltcardDecrypt(keys.EncryptionKey, keys.AuthenticationKey, uri);
+        Assert.NotNull(piccData);
         await ntag.ResetCard(keys);
     }
 
@@ -238,19 +236,15 @@ public class UnitTest1
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-        //await ntag.ResetCard(issuerKey);
+        var batchKeys = new DeterministicBatchKeys(issuerKey);
+        //await ntag.ResetCard(batchKeys);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        var batchKeys = new DeterministicBatchKeys(issuerKey);
+        
         var keys = batchKeys.DeriveBoltcardKeys(uid);
-
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
-        var message = await ntag.ReadNDef();
-        var uri = new NdefUriRecord(message[0]).Uri;
-        var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
-        var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
-
-        var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, p, c);
+        var uri = await ntag.TryReadNDefURI();
+        var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, uri);
         Assert.NotNull(piccData);
         await ntag.ResetCard(batchKeys);
     }
