@@ -28,12 +28,13 @@ dotnet add package BTCPayServer.NTag424.PCSC
 Then to use it:
 
 ```csharp
+using BTCPayServer.NTag424;
 using BTCPayServer.NTag424.PCSC;
 using System;
 
-using var ctx = PCSCContext.Create();
+using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
-var key = new AESKey(new byte[16]);
+var key = AESKey.Default;
 await ntag.AuthenticateEV2First(0, key);
 
 var id = await ntag.GetCardUID();
@@ -46,9 +47,8 @@ Console.WriteLine($"Card UID: {idStr}");
 ```csharp
 using BTCPayServer.NTag424.PCSC;
 using System;
-using NdefLibrary.Ndef;
 
-using var ctx = PCSCContext.Create();
+using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
 var uri = await ntag.TryReadNDefURI();
 Console.WriteLine($"Card URI: {uri}");
@@ -56,43 +56,27 @@ Console.WriteLine($"Card URI: {uri}");
 
 ### How to verify the signature of an NTag 424 smart card
 
-BoltCards involve the cooperation of three types of agents:
-* `Card Issuer`: This agent configures the cards for lightning payments. This includes setting up the card to use a specific `LNUrl Withdraw Service` and generating the access keys.
-* `Payment processor`: This agent reads the card and forwards the payment request to the `LNUrl Withdraw Service`.
-* `LNUrl Withdraw Service`: This service authenticates the card and completes the payment.
-
-BoltCards setup involves three different type of access keys:
-* The `IssuerKey`: Owned by the `Card Issuer`, this key is used to configure the card.
-* The `EncryptionKey`: This key can either be unique to each card or shared among multiple cards. It must be known by the `LNUrl Withdraw Service`.
-* The `AuthenticationKey`: This key should be unique and is used to authenticate the card. It must also be known by the `LNUrl Withdraw Service`.
-
-If you are the `LNURL Withdraw Service`, here how to authenticate the card:
-
 ```csharp
 using BTCPayServer.NTag424;
 using BTCPayServer.NTag424.PCSC;
 using System;
+using System.Security;
 using System.Collections;
-using NdefLibrary.Ndef;
+using System.Text.RegularExpressions;
 
 // Set keys have you have setup the card
 var encryptionKey = AESKey.Default;
-
-using var ctx = PCSCContext.Create();
-var ntag = ctx.CreateNTag424();
-var message = await ntag.ReadNDef();
-var uri = new NdefUriRecord(message[0]).Uri;
-var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
-var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
-
-var piccData = PICCData.Create(encryptionKey.Decrypt(p));
-
-// Note that the `piccData.Uid` contains the UID of the card which can be used to fetch
-// the proper real `authenticationKey` of the card.
 var authenticationKey = AESKey.Default;
 
-if (!authenticationKey.CheckSunMac(c, piccData))
-    throw new Exception("Invalid card");
+using var ctx = await PCSCContext.WaitForCard();
+var ntag = ctx.CreateNTag424();
+
+var uri = await ntag.TryReadNDefURI();
+var p = Regex.Match(uri.AbsoluteUri, "p=(.*?)&").Groups[1].Value;
+var c = Regex.Match(uri.AbsoluteUri, "c=(.*)").Groups[1].Value;
+var piccData = PICCData.TryBoltcardDecrypt(encryptionKey, authenticationKey, p, c);
+if (piccData == null)
+    throw new SecurityException("Impossible to decrypt or validate");
 
 // The LNUrlw service should also check `piccData.Counter` is always increasing between payments to avoid replay attacks.
 ```
@@ -105,7 +89,7 @@ using BTCPayServer.NTag424.PCSC;
 using System;
 using System.Collections;
 
-using var ctx = PCSCContext.Create();
+using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
 
 // Example with hard coded keys
@@ -127,34 +111,37 @@ await ntag.SetupBoltcard(lnurlwService, BoltcardKeys.Default, keys);
 
 ### How to setup a bolt card with deterministic keys, and decrypt the PICCData
 
-[Deterministic keys](https://github.com/boltcard/boltcard/blob/main/docs/DETERMINISTIC.md) are useful if you want to be able to recover the keys of the card from a seed.
-* The issuer can recover the keys of any card, just with a batchId and the issuer key.
-* The LNUrlw service can recover the keys of any card (except the issuer key), just with the encryption key.
+[Deterministic keys](https://github.com/boltcard/boltcard/blob/main/docs/DETERMINISTIC.md) simplifies the management of Boltcard by removing the need to store the keys of each Boltcards in a database.
 
-Note that you can reset the card to its factory state by only knowing the `issuerKey` with `await ntag.ResetCard(issuerKey);`.
-
+Here is an example of how to setup a card with deterministic keys, and decrypt the PICCData.
 ```csharp
 using BTCPayServer.NTag424;
 using BTCPayServer.NTag424.PCSC;
 using System;
+using System.Security;
 using System.Collections;
+using System.Text.RegularExpressions;
 
-using var ctx = PCSCContext.Create();
+
+using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
 
 await ntag.AuthenticateEV2First(0, AESKey.Default);
 var uid = await ntag.GetCardUID();
 
 var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
-var lnurlwService = "lnurlw://test.com";
+var batchKeys = new DeterministicBatchKeys(issuerKey, BatchId: 0);
 
-var piccData = PICCData.TryDeterministicBoltcardDecrypt(issuerKey, p, c, uid, batchId: 0);
+var uri = await ntag.TryReadNDefURI();
+var p = Regex.Match(uri.AbsoluteUri, "p=(.*?)&").Groups[1].Value;
+var c = Regex.Match(uri.AbsoluteUri, "c=(.*)").Groups[1].Value;
+
+var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, p, c, uid);
 if (piccData == null)
-    throw new SecurityException("Impossible to decrypt with issuerKey");
+    throw new SecurityException("Impossible to decrypt with batchKeys");
 // If this method didn't throw an exception, it has been successfully decrypted and authenticated.
 
-// You can reset the card with `await ntag.ResetCard(issuerKey);`.
+// You can reset the card with `await ntag.ResetCard(batchKeys);`.
 ```
 
 ## License

@@ -22,13 +22,4 @@ public record BoltcardKeys(
     public BoltcardKeys() : this (AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default, AESKey.Default)
     {
     }
-
-    public static BoltcardKeys CreateDeterministicKeys(AESKey issuerKey, byte[] uid, uint batchId = 0)
-    {
-        var encryptionKey = issuerKey.DeriveEncryptionKey(batchId);
-        var appMasterKey = issuerKey.DeriveAppMasterKey(uid, batchId);
-        var authKey = issuerKey.DeriveAuthenticationKey(uid, batchId);
-        var k = issuerKey.DeriveK3K4(uid, batchId);
-        return new BoltcardKeys(appMasterKey, encryptionKey, authKey, k.K3, k.K4);
-    }
 }

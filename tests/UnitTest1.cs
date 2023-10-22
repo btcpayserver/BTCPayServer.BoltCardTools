@@ -79,13 +79,14 @@ public class UnitTest1
         var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
         var batchId = 1U;
         var uid = "04a39493cc8680".HexToBytes();
-        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId);
+        var batchKeys = new DeterministicBatchKeys(issuerKey, batchId);
+        var keys = batchKeys.DeriveBoltcardKeys(uid);
         Logs.WriteLine("K0: " + keys.AppMasterKey.ToBytes().ToHex());
         Logs.WriteLine("K1: " + keys.EncryptionKey.ToBytes().ToHex());
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
         Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
         Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
-        Logs.WriteLine("ID: " + keys.EncryptionKey.GetId(uid, batchId).ToHex());
+        Logs.WriteLine("ID: " + batchKeys.GetId(uid).ToHex());
     }
 
     [Fact]
@@ -175,12 +176,13 @@ public class UnitTest1
     public async Task Reset()
     {
         var issuerKey = new AESKey("01000000000000000000000000000000".HexToBytes());
+        var batchKeys = new DeterministicBatchKeys(issuerKey);
         using var ctx = PCSCContext.Create();
-        var enc = issuerKey.DeriveEncryptionKey();
+        var enc = batchKeys.DeriveEncryptionKey();
         var ntag = ctx.CreateNTag424();
         await ntag.AuthenticateEV2First(1, enc);
         var uid = await ntag.GetCardUID();
-        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid);
+        var keys = batchKeys.DeriveBoltcardKeys(uid);
         await ntag.ResetCard(keys);
     }
 
@@ -239,7 +241,8 @@ public class UnitTest1
         //await ntag.ResetCard(issuerKey);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        var keys = BoltcardKeys.CreateDeterministicKeys(issuerKey, uid, batchId: 0);
+        var batchKeys = new DeterministicBatchKeys(issuerKey);
+        var keys = batchKeys.DeriveBoltcardKeys(uid);
 
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var message = await ntag.ReadNDef();
@@ -247,9 +250,9 @@ public class UnitTest1
         var p = Regex.Match(uri, "p=(.*?)&").Groups[1].Value;
         var c = Regex.Match(uri, "c=(.*)").Groups[1].Value;
 
-        var piccData = PICCData.TryDeterministicBoltcardDecrypt(issuerKey, p, c, batchId: 0);
+        var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, p, c);
         Assert.NotNull(piccData);
-        await ntag.ResetCard(issuerKey);
+        await ntag.ResetCard(batchKeys);
     }
 
     [Fact]
