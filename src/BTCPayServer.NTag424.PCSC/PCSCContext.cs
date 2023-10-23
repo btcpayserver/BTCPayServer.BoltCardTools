@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using PCSC;
 using PCSC.Extensions;
 
@@ -112,6 +113,33 @@ waitStateChange:
         }, TaskCreationOptions.LongRunning);
     }
 
+    public Task WaitForDisconnected(CancellationToken cancellationToken = default)
+    {
+        return Task.Factory.StartNew(() =>
+        {
+            using var registration = cancellationToken.Register(() => Context.Cancel());
+            IntPtr timeout = IntPtr.Zero;
+            var readerStates = new[] 
+            {
+                new SCardReaderState()
+                {
+                    ReaderName = CardReader.ReaderName,
+                    CurrentState = SCRState.Unaware
+                }
+            };
+waitStateChange:
+            var res = Context.GetStatusChange(timeout, readerStates);
+            timeout = SCardContext.INFINITE;
+            readerStates[0].CurrentStateValue = readerStates[0].EventStateValue;
+            if (res == SCardError.Cancelled)
+                throw new OperationCanceledException(cancellationToken);
+            if (res != SCardError.Success)
+                return;
+            if (readerStates[0].EventState.CardIsAbsent())
+                return;
+            goto waitStateChange;
+        }, TaskCreationOptions.LongRunning);
+    }
     public void Dispose()
     {
         CardReader.Dispose();

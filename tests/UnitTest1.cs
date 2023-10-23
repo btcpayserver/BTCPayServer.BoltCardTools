@@ -207,7 +207,8 @@ public class UnitTest1
     [Fact]
     public async Task CanWaitForCard()
     {
-        await PCSCContext.WaitForCard();
+        using var ctx = await PCSCContext.WaitForCard();
+        await ctx.WaitForDisconnected();
     }
 
     [Fact]
