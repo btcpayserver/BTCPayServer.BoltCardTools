@@ -127,7 +127,7 @@ var cardKey = new CardKey(new byte[16]);
 await ntag.AuthenticateEV2First(0, AESKey.Default);
 var uid = await ntag.GetCardUID();
 
-// SaveNonce should be implemented by the server
+// SaveCardKey should be implemented by the server
 await SaveCardKey(issuerKey.GetId(uid), cardKey);
 
 
