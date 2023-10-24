@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -65,7 +66,7 @@ public class AESKey
     {
         return this.GetSunMac(piccData, payload).IsSame(mac);
     }
-    public bool CheckSunMac(string mac, PICCData piccData, byte[]? payload = null)
+    public bool CheckSunMac([NotNullWhen(true)] string? mac, PICCData piccData, byte[]? payload = null)
     {
         if (mac is null || !Regex.IsMatch(mac, "[a-f0-9A-F]{16}"))
             return false;
