@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 namespace BTCPayServer.NTag424;
 public record CardKey(AESKey AESKey)
 {
+    public static CardKey Random() => new CardKey(AESKey.Random());
     public CardKey(byte[] bytes) : this(new AESKey(bytes))
     {
         
@@ -49,5 +50,9 @@ public record CardKey(AESKey AESKey)
     public bool CheckSunMac([NotNullWhen(true)] string? c, BoltcardPICCData piccData)
     {
         return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData);
+    }
+    public byte[] ToBytes()
+    {
+        return AESKey.ToBytes();
     }
 }
