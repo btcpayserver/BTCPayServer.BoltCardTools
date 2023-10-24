@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.Loader;
 using System.Security;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace BTCPayServer.NTag424;
@@ -30,12 +31,12 @@ public record BoltcardPICCData : PICCData
     /// <param name="uri">The url with p= and c= parameters</param
     /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, Uri? uri, byte[]? payload = null)
+    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, Uri? uri)
     {
         if (!ExtractPC(uri, out var p, out var c))
             return null;
 
-        return TryDecrypt(encryptionKey, p, c, payload);
+        return TryDecrypt(encryptionKey, p);
     }
 
     // PICCData for boltcard starts with 0xc7, and end with 5 bytes of 0
@@ -52,11 +53,10 @@ public record BoltcardPICCData : PICCData
     /// <param name="encryptionKey">The encryption key (K1)</param>
     /// <param name="p">p= encrypted PICCData parameter</param>
     /// <param name="c">c= checksum parameter</param>
-    /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, string p, string c, byte[]? payload = null)
+    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, string p)
     {
-        if (!Validate(p, c))
+        if (!ValidateP(p))
             return null;
         var bytes = encryptionKey.Decrypt(p.HexToBytes());
         if (!ValidateBoltcardPICCData(bytes))
@@ -120,18 +120,8 @@ public record PICCData(byte[]? Uid, int? Counter)
             return null;
         return TryBoltcardDecryptCheck(encryptionKey, authenticationKey, p, c, payload);
     }
-
-    protected static bool Validate(string p, string c)
-    {
-        if (p.Length != 32 || c.Length != 16)
-            return false;
-        foreach (var ch in p.Concat(c))
-        {
-            if (Extensions.IsDigitCore(ch) == 0xff)
-                return false;
-        }
-        return true;
-    }
+    internal static bool ValidateP(string p) => p != null && Regex.IsMatch(p, "[a-f0-9A-F]{32}");
+    internal static bool ValidateC(string c) => c != null && Regex.IsMatch(c, "[a-f0-9A-F]{16}");
 
     /// <summary>
     /// Decrypt the PICCData from the Boltcard and check the checksum.
@@ -144,7 +134,7 @@ public record PICCData(byte[]? Uid, int? Counter)
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
     public static PICCData? TryBoltcardDecryptCheck(AESKey encryptionKey, AESKey authenticationKey, string p, string c, byte[]? payload = null)
     {
-        if (!Validate(p, c))
+        if (!ValidateP(p) || !ValidateC(c))
             return null;
 
         var bytes = encryptionKey.Decrypt(p.HexToBytes());

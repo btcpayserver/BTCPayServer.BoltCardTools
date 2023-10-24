@@ -41,15 +41,15 @@ public record CardKey(AESKey AESKey)
         return new BoltcardKeys(appMasterKey, encryptionKey, authKey, k1, k2);
     }
 
-    public bool CheckSunMac([NotNullWhen(true)] Uri? uri, BoltcardPICCData piccData)
+    public bool CheckSunMac([NotNullWhen(true)] Uri? uri, BoltcardPICCData piccData, byte[]? payload = null)
     {
         if (!PICCData.ExtractPC(uri, out _, out var c))
             return false;
-        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData);
+        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData, payload);
     }
-    public bool CheckSunMac([NotNullWhen(true)] string? c, BoltcardPICCData piccData)
+    public bool CheckSunMac([NotNullWhen(true)] string? c, BoltcardPICCData piccData, byte[]? payload = null)
     {
-        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData);
+        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData, payload);
     }
     public byte[] ToBytes()
     {

@@ -63,19 +63,34 @@ using System;
 using System.Security;
 using System.Collections;
 
-// Set keys have you have setup the card
-var encryptionKey = AESKey.Default;
-var authenticationKey = AESKey.Default;
-
 using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
+// In prod: var issuerKey = IssuerKey.Random();
+var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+// In prod: var cardKey = CardKey.Random();
+var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
+
+// First time authenticate is with the default 00000000000000000000000000000000 key
+await ntag.AuthenticateEV2First(0, AESKey.Default);
+var uid = await ntag.GetCardUID();
+
+var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 
 var uri = await ntag.TryReadNDefURI();
-var piccData = PICCData.TryBoltcardDecryptCheck(encryptionKey, authenticationKey, uri);
-if (piccData == null)
-    throw new SecurityException("Impossible to decrypt or validate");
+var piccData = issuerKey.TryDecrypt(uri);
+if (piccData is null)
+    throw new SecurityException("Impossible to decrypt with issuerKey");
 
-// The LNUrlw service should also check `piccData.Counter` is always increasing between payments to avoid replay attacks.
+// In production, you would fetch the card key from database
+// var cardKey = await GetCardKey(issuerKey.GetId(piccData.Uid));
+
+if (!cardKey.CheckSunMac(uri, piccData))
+    throw new SecurityException("Impossible to decrypt with issuerKey");
+
+await ntag.ResetCard(issuerKey, cardKey);
+// If this method didn't throw an exception, it has been successfully decrypted and authenticated.
+// You can reset the card with `await ntag.ResetCard(issuerKey, cardKey);`.
 ```
 
 ### How to setup a bolt card
@@ -132,7 +147,7 @@ await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 var uri = await ntag.TryReadNDefURI();
 var piccData = issuerKey.TryDecrypt(uri);
 if (piccData == null)
-    throw new SecurityException("Impossible to decrypt with batchKeys");
+    throw new SecurityException("Impossible to decrypt with issuerKey");
 
 // In real life, you would fetch the nonce from database 
 // var nonce = await FetchNonce(issuerKey.GetId(piccData.Uid));

@@ -193,14 +193,14 @@ public class UnitTest1
         var piccData = issuerKey.TryDecrypt(uri);
         Assert.NotNull(piccData);
 
-        // In real life, you would fetch the nonce from database 
-        // var nonce = await FetchNonce(issuerKey.GetId(piccData.Uid));
+        // In real life, you would fetch the card key from database
+        // var cardKey = await GetCardKey(issuerKey.GetId(piccData.Uid));
 
         Assert.True(cardKey.CheckSunMac(uri, piccData));
 
         await ntag.ResetCard(issuerKey, cardKey);
         // If this method didn't throw an exception, it has been successfully decrypted and authenticated.
-        // You can reset the card with `await ntag.ResetCard(issuerKey, nonce);`.
+        // You can reset the card with `await ntag.ResetCard(issuerKey, cardKey);`.
     }
 
     [Fact]

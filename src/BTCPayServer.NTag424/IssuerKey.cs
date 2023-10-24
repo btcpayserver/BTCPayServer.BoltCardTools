@@ -13,15 +13,10 @@ namespace BTCPayServer.NTag424;
 /// <param name="AESKey"></param>
 public record IssuerKey(AESKey AESKey)
 {
+    public static IssuerKey Random() => new IssuerKey(AESKey.Random());
     public IssuerKey(ReadOnlySpan<byte> bytes) : this(new AESKey(bytes))
     {
             
-    }
-    public static byte[] RandomNonce()
-    {
-        var nonce = new byte[16];
-        RandomNumberGenerator.Fill(nonce);
-        return nonce;
     }
     public AESKey DeriveEncryptionKey()
     {        
@@ -46,11 +41,10 @@ public record IssuerKey(AESKey AESKey)
     /// Decrypt the PICCData from the BoltCard and check the checksum.
     /// </summary>
     /// <param name="uri">The url with p= and c= parameters</param
-    /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public BoltcardPICCData? TryDecrypt(Uri? uri, byte[]? payload = null)
+    public BoltcardPICCData? TryDecrypt(Uri? uri)
     {
-        return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), uri, payload);
+        return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), uri);
     }
 
     /// <summary>
@@ -58,11 +52,9 @@ public record IssuerKey(AESKey AESKey)
     /// </summary>
     /// <param name="encryptionKey">The encryption key (K1)</param>
     /// <param name="p">p= encrypted PICCData parameter</param>
-    /// <param name="c">c= checksum parameter</param>
-    /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public BoltcardPICCData? TryDecrypt(string p, string c, byte[]? payload = null)
+    public BoltcardPICCData? TryDecrypt(string p)
     {
-        return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), p, c, payload);
+        return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), p);
     }
 }
