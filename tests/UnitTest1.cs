@@ -78,9 +78,9 @@ public class UnitTest1
     public void CanDeriveDeterministicBoltcard()
     {
         var uid = "04a39493cc8680".HexToBytes();
-        var nonce = "b45775776cb224c75bcde7ca3704e933".HexToBytes();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
-        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
         Logs.WriteLine("K0: " + keys.AppMasterKey.ToBytes().ToHex());
         Logs.WriteLine("K1: " + keys.EncryptionKey.ToBytes().ToHex());
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
@@ -180,14 +180,13 @@ public class UnitTest1
         using var ctx = await PCSCContext.WaitForCard();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
 
         // First time authenticate is with the default 00.000 key
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
 
-        var nonce = "00010000000000000000000000000000".HexToBytes();
-
-        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
         await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 
         var uri = await ntag.TryReadNDefURI();
@@ -197,9 +196,9 @@ public class UnitTest1
         // In real life, you would fetch the nonce from database 
         // var nonce = await FetchNonce(issuerKey.GetId(piccData.Uid));
 
-        Assert.True(issuerKey.CheckSunMac(uri, piccData, nonce));
+        Assert.True(cardKey.CheckSunMac(uri, piccData));
 
-        await ntag.ResetCard(issuerKey, nonce);
+        await ntag.ResetCard(issuerKey, cardKey);
         // If this method didn't throw an exception, it has been successfully decrypted and authenticated.
         // You can reset the card with `await ntag.ResetCard(issuerKey, nonce);`.
     }
@@ -207,17 +206,17 @@ public class UnitTest1
     [Fact]
     public async Task Reset()
     {
-        var issuerKey = new IssuerKey("01000000000000000000000000000000".HexToBytes());
-        var nonce = "00010000000000000000000000000000".HexToBytes();
+        var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
         using var ctx = PCSCContext.Create();
 
         var ntag = ctx.CreateNTag424();
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
         await ntag.SetupBoltcard("lnurlw://test.com", BoltcardKeys.Default, keys);
 
-        await ntag.ResetCard(issuerKey, nonce);
+        await ntag.ResetCard(issuerKey, cardKey);
     }
 
     [Fact]
@@ -271,18 +270,20 @@ public class UnitTest1
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
+
         var nonce = "00010000000000000000000000000000".HexToBytes();
         //await ntag.ResetCard(issuerKey, nonce);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
 
-        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var uri = await ntag.TryReadNDefURI();
         issuerKey.TryDecrypt(uri);
         var piccData = issuerKey.TryDecrypt(uri);
         Assert.NotNull(piccData);
-        await ntag.ResetCard(issuerKey, nonce);
+        await ntag.ResetCard(issuerKey, cardKey);
     }
 
     [Fact]

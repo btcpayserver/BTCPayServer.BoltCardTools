@@ -70,6 +70,12 @@ internal class Helpers
         }
         return res;
     }
+    public static void ValidateUID(byte[] uid)
+    {
+        ArgumentNullException.ThrowIfNull(uid);
+        if (uid.Length != 7)
+            throw new ArgumentException("uid should be 7 bytes", nameof(uid));
+    }
 
     //https://github.com/alexgorbatchev/crc/blob/master/src/calculators/crcjam.ts
 

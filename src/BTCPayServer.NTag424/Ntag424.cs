@@ -395,9 +395,10 @@ public class Ntag424
     /// Reset the card to factory settings using current application keys using deterministic keys
     /// </summary>
     /// <param name="issuerKey">The issuer key</param>
+    /// <param name="cardKey">The card key</param>
     /// <param name="nonce"></param>
     /// <returns></returns>
-    public async Task ResetCard(IssuerKey issuerKey, byte[] nonce)
+    public async Task ResetCard(IssuerKey issuerKey, CardKey cardKey)
     {
         var encryptionKey = issuerKey.DeriveEncryptionKey();
         if (CurrentSession is null)
@@ -405,7 +406,7 @@ public class Ntag424
         if (encryptionKey != CurrentSession!.Key)
             await AuthenticateEV2NonFirst(1, encryptionKey);
         var uid = await GetCardUID();
-        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
         await ResetCard(keys);
     }
 
