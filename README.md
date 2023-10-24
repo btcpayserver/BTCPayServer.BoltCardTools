@@ -71,7 +71,7 @@ using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
 
 var uri = await ntag.TryReadNDefURI();
-var piccData = PICCData.TryBoltcardDecrypt(encryptionKey, authenticationKey, uri);
+var piccData = PICCData.TryBoltcardDecryptCheck(encryptionKey, authenticationKey, uri);
 if (piccData == null)
     throw new SecurityException("Impossible to decrypt or validate");
 
@@ -112,28 +112,36 @@ await ntag.SetupBoltcard(lnurlwService, BoltcardKeys.Default, keys);
 
 Here is an example of how to setup a card with deterministic keys, and decrypt the PICCData.
 ```csharp
-using BTCPayServer.NTag424;
-using BTCPayServer.NTag424.PCSC;
-using System;
-using System.Security;
-using System.Collections;
-
 using var ctx = await PCSCContext.WaitForCard();
 var ntag = ctx.CreateNTag424();
+var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
 
+// First time authenticate is with the default 00.000 key
 await ntag.AuthenticateEV2First(0, AESKey.Default);
 var uid = await ntag.GetCardUID();
 
-var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-var batchKeys = new DeterministicBatchKeys(issuerKey, BatchId: 0);
+//var nonce = IssuerKey.RandomNonce();
+var nonce = new byte[16]; // Please use IssuerKey.RandomNonce() in production
+
+// SaveNonce should be implemented by the server
+await SaveNonce(issuerKey.GetId(uid), nonce);
+
+var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 
 var uri = await ntag.TryReadNDefURI();
-var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, uri, uid);
+var piccData = issuerKey.TryDecrypt(uri);
 if (piccData == null)
     throw new SecurityException("Impossible to decrypt with batchKeys");
-// If this method didn't throw an exception, it has been successfully decrypted and authenticated.
 
-// You can reset the card with `await ntag.ResetCard(batchKeys);`.
+// In real life, you would fetch the nonce from database 
+// var nonce = await FetchNonce(issuerKey.GetId(piccData.Uid));
+
+if (!issuerKey.CheckSunMac(uri, piccData, nonce))
+    throw new SecurityException("Impossible to check the SUN MAC");
+
+// If this method didn't throw an exception, it has been successfully decrypted and authenticated.
+// You can reset the card with `await ntag.ResetCard(issuerKey, nonce);`.
 ```
 
 ## License

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Security;
 using System.Text.RegularExpressions;
 using BTCPayServer.NTag424.PCSC;
 using NdefLibrary.Ndef;
@@ -76,17 +77,16 @@ public class UnitTest1
     [Fact]
     public void CanDeriveDeterministicBoltcard()
     {
-        var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-        var batchId = 1U;
         var uid = "04a39493cc8680".HexToBytes();
-        var batchKeys = new DeterministicBatchKeys(issuerKey, batchId);
-        var keys = batchKeys.DeriveBoltcardKeys(uid);
+        var nonce = "b45775776cb224c75bcde7ca3704e933".HexToBytes();
+        var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
         Logs.WriteLine("K0: " + keys.AppMasterKey.ToBytes().ToHex());
         Logs.WriteLine("K1: " + keys.EncryptionKey.ToBytes().ToHex());
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
         Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
         Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
-        Logs.WriteLine("ID: " + batchKeys.GetId(uid).ToHex());
+        Logs.WriteLine("ID: " + issuerKey.GetId(uid).ToHex());
     }
 
     [Fact]
@@ -172,18 +172,52 @@ public class UnitTest1
         Assert.Equal(uid1.ToHex(), uid2.ToHex());
     }
 
+
+    
+    [Fact]
+    public async Task CanDecryptAndCheckSUNMacOnDeterministicKey()
+    {  
+        using var ctx = await PCSCContext.WaitForCard();
+        var ntag = ctx.CreateNTag424();
+        var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+
+        // First time authenticate is with the default 00.000 key
+        await ntag.AuthenticateEV2First(0, AESKey.Default);
+        var uid = await ntag.GetCardUID();
+
+        var nonce = "00010000000000000000000000000000".HexToBytes();
+
+        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
+
+        var uri = await ntag.TryReadNDefURI();
+        var piccData = issuerKey.TryDecrypt(uri);
+        Assert.NotNull(piccData);
+
+        // In real life, you would fetch the nonce from database 
+        // var nonce = await FetchNonce(issuerKey.GetId(piccData.Uid));
+
+        Assert.True(issuerKey.CheckSunMac(uri, piccData, nonce));
+
+        await ntag.ResetCard(issuerKey, nonce);
+        // If this method didn't throw an exception, it has been successfully decrypted and authenticated.
+        // You can reset the card with `await ntag.ResetCard(issuerKey, nonce);`.
+    }
+
     [Fact]
     public async Task Reset()
     {
-        var issuerKey = new AESKey("01000000000000000000000000000000".HexToBytes());
-        var batchKeys = new DeterministicBatchKeys(issuerKey);
+        var issuerKey = new IssuerKey("01000000000000000000000000000000".HexToBytes());
+        var nonce = "00010000000000000000000000000000".HexToBytes();
         using var ctx = PCSCContext.Create();
-        var enc = batchKeys.DeriveEncryptionKey();
+
         var ntag = ctx.CreateNTag424();
-        await ntag.AuthenticateEV2First(1, enc);
+        await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        var keys = batchKeys.DeriveBoltcardKeys(uid);
-        await ntag.ResetCard(keys);
+        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
+        await ntag.SetupBoltcard("lnurlw://test.com", BoltcardKeys.Default, keys);
+
+        await ntag.ResetCard(issuerKey, nonce);
     }
 
     [Fact]
@@ -226,7 +260,7 @@ public class UnitTest1
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var uri = await ntag.TryReadNDefURI();
         Assert.StartsWith("lnurlw://test.com/?p=", uri?.AbsoluteUri);
-        var piccData = PICCData.TryBoltcardDecrypt(keys.EncryptionKey, keys.AuthenticationKey, uri);
+        var piccData = PICCData.TryBoltcardDecryptCheck(keys.EncryptionKey, keys.AuthenticationKey, uri);
         Assert.NotNull(piccData);
         await ntag.ResetCard(keys);
     }
@@ -236,18 +270,19 @@ public class UnitTest1
     {
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
-        var issuerKey = new AESKey("00000000000000000000000000000001".HexToBytes());
-        var batchKeys = new DeterministicBatchKeys(issuerKey);
-        //await ntag.ResetCard(batchKeys);
+        var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
+        var nonce = "00010000000000000000000000000000".HexToBytes();
+        //await ntag.ResetCard(issuerKey, nonce);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        
-        var keys = batchKeys.DeriveBoltcardKeys(uid);
+
+        var keys = issuerKey.DeriveBoltcardKeys(uid, nonce);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var uri = await ntag.TryReadNDefURI();
-        var piccData = PICCData.TryDeterministicBoltcardDecrypt(batchKeys, uri);
+        issuerKey.TryDecrypt(uri);
+        var piccData = issuerKey.TryDecrypt(uri);
         Assert.NotNull(piccData);
-        await ntag.ResetCard(batchKeys);
+        await ntag.ResetCard(issuerKey, nonce);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using static BTCPayServer.NTag424.Helpers;
 
 namespace BTCPayServer.NTag424;
@@ -66,6 +67,8 @@ public class AESKey
     }
     public bool CheckSunMac(string mac, PICCData piccData, byte[]? payload = null)
     {
+        if (mac is null || !Regex.IsMatch(mac, "[a-f0-9A-F]{16}"))
+            return false;
         return CheckSunMac(mac.HexToBytes(), piccData, payload);
     }
 

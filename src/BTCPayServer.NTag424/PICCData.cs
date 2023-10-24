@@ -20,6 +20,49 @@ public record BoltcardPICCData : PICCData
     public BoltcardPICCData(PICCData piccData) : this(piccData.Uid!, piccData.Counter!.Value)
     {
     }
+
+
+
+    /// <summary>
+    /// Decrypt the PICCData from the BoltCard and check the checksum.
+    /// </summary>
+    /// <param name="encryptionKey">The encryption key (K1)</param>
+    /// <param name="uri">The url with p= and c= parameters</param
+    /// <param name="payload">Optional payload committed by c</param>
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, Uri? uri, byte[]? payload = null)
+    {
+        if (!ExtractPC(uri, out var p, out var c))
+            return null;
+
+        return TryDecrypt(encryptionKey, p, c, payload);
+    }
+
+    // PICCData for boltcard starts with 0xc7, and end with 5 bytes of 0
+    static bool ValidateBoltcardPICCData(byte[] piccData)
+    {
+        if (piccData is null || piccData.Length != 16)
+            return false;
+        return piccData[0] == 0xc7;
+    }
+
+    /// <summary>
+    /// Decrypt the PICCData from the Boltcard and check the checksum.
+    /// </summary>
+    /// <param name="encryptionKey">The encryption key (K1)</param>
+    /// <param name="p">p= encrypted PICCData parameter</param>
+    /// <param name="c">c= checksum parameter</param>
+    /// <param name="payload">Optional payload committed by c</param>
+    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, string p, string c, byte[]? payload = null)
+    {
+        if (!Validate(p, c))
+            return null;
+        var bytes = encryptionKey.Decrypt(p.HexToBytes());
+        if (!ValidateBoltcardPICCData(bytes))
+            return null;
+        return new BoltcardPICCData(PICCData.Create(bytes));
+    }
 }
 public record PICCData(byte[]? Uid, int? Counter)
 {
@@ -44,56 +87,7 @@ public record PICCData(byte[]? Uid, int? Counter)
         return new PICCData(uid, counter);
     }
 
-    /// <summary>
-    /// Decrypt the PICCData from the BoltCard and check the checksum.
-    /// </summary>
-    /// <param name="batchKeys">The deterministic batch keys</param>
-    /// <param name="uri">The url with p= and c= parameters</param
-    /// <param name="payload">Optional payload committed by c</param>
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static BoltcardPICCData? TryDeterministicBoltcardDecrypt(DeterministicBatchKeys batchKeys, Uri? uri, byte[]? payload = null)
-    {
-        if (!ExtractPC(uri, out var p, out var c))
-            return null;
-        return TryDeterministicBoltcardDecrypt(batchKeys, p, c, payload);
-    }
-
-    /// <summary>
-    /// Decrypt the PICCData from the BoltCard and check the checksum.
-    /// </summary>
-    /// <param name="batchKeys">The deterministic batch keys</param>
-    /// <param name="p">The p= parameter from the lnurlw (encrypted PICCData)</param>
-    /// <param name="c">The c= parameter from the lnurlw (checksum)</param>
-    /// <param name="payload">Optional payload committed by c</param>
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static BoltcardPICCData? TryDeterministicBoltcardDecrypt(DeterministicBatchKeys batchKeys, string p, string c, byte[]? payload = null)
-    {
-        if (!Validate(p, c))
-            return null;
-        var encryptionKey = batchKeys.DeriveEncryptionKey();
-        var bytes = encryptionKey.Decrypt(p.HexToBytes());
-        if (bytes[0] != 0xc7)
-            return null;
-        var piccData = new BoltcardPICCData(Create(bytes));
-        var authenticationKey = batchKeys.DeriveAuthenticationKey(piccData.Uid);
-        if (!authenticationKey.CheckSunMac(c, piccData, payload))
-            return null;
-        return new BoltcardPICCData(piccData);
-    }
-
-    private static bool Validate(string p, string c)
-    {
-        if (p.Length != 32 || c.Length != 16)
-            return false;
-        foreach(var ch in p.Concat(c))
-        {
-            if (Extensions.IsDigitCore(ch) == 0xff)
-                return false;
-        }
-        return true;
-    }
-
-    static bool ExtractPC(Uri? uri, [MaybeNullWhen(false)] out string p, [MaybeNullWhen(false)] out string c)
+    internal static bool ExtractPC(Uri? uri, [MaybeNullWhen(false)] out string p, [MaybeNullWhen(false)] out string c)
     {
         p = null;
         c = null;
@@ -103,8 +97,8 @@ public record PICCData(byte[]? Uid, int? Counter)
         if (queryStringIdx == -1)
             return false;
         var queryString = uri.AbsoluteUri.Substring(queryStringIdx);
-        var pm = Regex.Match(queryString, "p=(.*?)&");
-        var cm = Regex.Match(queryString, "c=(.*)");
+        var pm = Regex.Match(queryString, "p=([a-f0-9A-F]{32})");
+        var cm = Regex.Match(queryString, "c=([a-f0-9A-F]{16})");
         if (pm is null || cm is null)
             return false;
         p = pm.Groups[1].Value;
@@ -120,11 +114,23 @@ public record PICCData(byte[]? Uid, int? Counter)
     /// <param name="uri">The url with p= and c= parameters</param
     /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static PICCData? TryBoltcardDecrypt(AESKey encryptionKey, AESKey authenticationKey, Uri? uri, byte[]? payload = null)
+    public static PICCData? TryBoltcardDecryptCheck(AESKey encryptionKey, AESKey authenticationKey, Uri? uri, byte[]? payload = null)
     {
         if (!ExtractPC(uri, out var p, out var c))
             return null;
-        return TryBoltcardDecrypt(encryptionKey, authenticationKey, p, c, payload);
+        return TryBoltcardDecryptCheck(encryptionKey, authenticationKey, p, c, payload);
+    }
+
+    protected static bool Validate(string p, string c)
+    {
+        if (p.Length != 32 || c.Length != 16)
+            return false;
+        foreach (var ch in p.Concat(c))
+        {
+            if (Extensions.IsDigitCore(ch) == 0xff)
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -136,7 +142,7 @@ public record PICCData(byte[]? Uid, int? Counter)
     /// <param name="c">THe c= parameter from the lnurlw (checksum)</param>
     /// <param name="payload">Optional payload committed by c</param>
     /// <returns>The PICCData if the checksum passed verification or null.</returns>
-    public static PICCData? TryBoltcardDecrypt(AESKey encryptionKey, AESKey authenticationKey, string p, string c, byte[]? payload = null)
+    public static PICCData? TryBoltcardDecryptCheck(AESKey encryptionKey, AESKey authenticationKey, string p, string c, byte[]? payload = null)
     {
         if (!Validate(p, c))
             return null;
