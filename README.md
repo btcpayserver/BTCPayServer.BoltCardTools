@@ -120,18 +120,15 @@ var ntag = ctx.CreateNTag424();
 
 // In prod: var issuerKey = IssuerKey.Random();
 var issuerKey = new IssuerKey(new byte[16]);
-// In prod: var cardKey = CardKey.Random();
-var cardKey = new CardKey(new byte[16]);
 
 // First time authenticate is with the default 00.000 key
 await ntag.AuthenticateEV2First(0, AESKey.Default);
 var uid = await ntag.GetCardUID();
+var cardKey = issuerKey.CreateCardKey(uid, 0);
+// RegisterCard should be implemented by the server
+await RegisterCard(issuerKey.GetId(uid), cardKey.Version);
 
-// SaveCardKey should be implemented by the server
-await SaveCardKey(issuerKey.GetId(uid), cardKey);
-
-
-var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+var keys = cardKey.DeriveBoltcardKeys(issuerKey);
 await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 
 var uri = await ntag.TryReadNDefURI();
@@ -141,7 +138,9 @@ if (piccData == null)
 
 
 // In production, you would fetch the card key from database
-// var cardKey = await GetCardKey(issuerKey.GetId(piccData.Uid));
+// var registration = await GetRegistration(issuerKey.GetId(piccData.Uid));
+// if (registration.State == "Reset") throw new SecurityException("Card reset state");
+// cardKey = issuerKey.CreateCardKey(uid, registration.Version);
 
 if (!cardKey.CheckSunMac(uri, piccData))
     throw new SecurityException("Impossible to check the SUN MAC");
