@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using static BTCPayServer.NTag424.Helpers;
+using static BTCPayServer.NTag424.Ntag424;
 
 namespace BTCPayServer.NTag424;
 
@@ -18,10 +19,35 @@ public record IssuerKey(AESKey AESKey)
     {
             
     }
+
+    public CardKey CreateCardKey(byte[] uid, int version)
+    {
+        Helpers.ValidateUID(uid);
+        if (version < 0)
+            throw new ArgumentOutOfRangeException(nameof(version));
+        var k = AESKey.Derive(Helpers.Concat(
+            new byte[] { 0x2d, 0x00, 0x3f, 0x75 },
+            uid,
+            Helpers.UIntToBytesLE((uint)version)));
+        return new CardKey(k);
+    }
+
     public AESKey DeriveEncryptionKey()
     {        
         return AESKey.Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x77 }));
+    }
+
+    public bool CheckSunMac([NotNullWhen(true)] Uri? uri, BoltcardPICCData piccData, int version, byte[]? payload = null)
+    {
+        if (!PICCData.ExtractPC(uri, out _, out var c))
+            return false;
+        return CheckSunMac(c, piccData, version, payload);
+    }
+    public bool CheckSunMac([NotNullWhen(true)] string? c, BoltcardPICCData piccData, int version, byte[]? payload = null)
+    {
+        var cardKey = CreateCardKey(piccData.Uid, version);
+        return cardKey.CheckSunMac(c, piccData, payload);
     }
 
     /// <summary>

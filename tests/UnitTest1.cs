@@ -79,14 +79,15 @@ public class UnitTest1
     {
         var uid = "04a39493cc8680".HexToBytes();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
-        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
-        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+        var cardKey = issuerKey.CreateCardKey(uid, 1);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey);
         Logs.WriteLine("K0: " + keys.AppMasterKey.ToBytes().ToHex());
         Logs.WriteLine("K1: " + keys.EncryptionKey.ToBytes().ToHex());
         Logs.WriteLine("K2: " + keys.AuthenticationKey.ToBytes().ToHex());
         Logs.WriteLine("K3: " + keys.K3.ToBytes().ToHex());
         Logs.WriteLine("K4: " + keys.K4.ToBytes().ToHex());
         Logs.WriteLine("ID: " + issuerKey.GetId(uid).ToHex());
+        Logs.WriteLine("CardKey: " + cardKey.AESKey.ToBytes().ToHex());
     }
 
     [Fact]
@@ -180,13 +181,13 @@ public class UnitTest1
         using var ctx = await PCSCContext.WaitForCard();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
-        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
 
         // First time authenticate is with the default 00.000 key
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
+        var cardKey = issuerKey.CreateCardKey(uid, 0);
 
-        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey);
         await ntag.SetupBoltcard("lnurlw://blahblah.com", BoltcardKeys.Default, keys);
 
         var uri = await ntag.TryReadNDefURI();
@@ -207,13 +208,14 @@ public class UnitTest1
     public async Task Reset()
     {
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
-        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
+        
         using var ctx = PCSCContext.Create();
 
         var ntag = ctx.CreateNTag424();
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+        var cardKey = issuerKey.CreateCardKey(uid, 1);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey);
         await ntag.SetupBoltcard("lnurlw://test.com", BoltcardKeys.Default, keys);
 
         await ntag.ResetCard(issuerKey, cardKey);
@@ -270,14 +272,13 @@ public class UnitTest1
         using var ctx = PCSCContext.Create();
         var ntag = ctx.CreateNTag424();
         var issuerKey = new IssuerKey("00000000000000000000000000000001".HexToBytes());
-        var cardKey = new CardKey("00000000000000000000000000000002".HexToBytes());
 
         var nonce = "00010000000000000000000000000000".HexToBytes();
         //await ntag.ResetCard(issuerKey, nonce);
         await ntag.AuthenticateEV2First(0, AESKey.Default);
         var uid = await ntag.GetCardUID();
-
-        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+        var cardKey = issuerKey.CreateCardKey(uid, 1);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
         var uri = await ntag.TryReadNDefURI();
         issuerKey.TryDecrypt(uri);

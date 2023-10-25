@@ -400,13 +400,7 @@ public class Ntag424
     /// <returns></returns>
     public async Task ResetCard(IssuerKey issuerKey, CardKey cardKey)
     {
-        var encryptionKey = issuerKey.DeriveEncryptionKey();
-        if (CurrentSession is null)
-            await AuthenticateEV2First(1, encryptionKey);
-        if (encryptionKey != CurrentSession!.Key)
-            await AuthenticateEV2NonFirst(1, encryptionKey);
-        var uid = await GetCardUID();
-        var keys = cardKey.DeriveBoltcardKeys(issuerKey, uid);
+        var keys = cardKey.DeriveBoltcardKeys(issuerKey);
         await ResetCard(keys);
     }
 

@@ -8,35 +8,24 @@ using System.Threading.Tasks;
 namespace BTCPayServer.NTag424;
 public record CardKey(AESKey AESKey)
 {
-    public static CardKey Random() => new CardKey(AESKey.Random());
-    public CardKey(byte[] bytes) : this(new AESKey(bytes))
+    public AESKey DeriveAuthenticationKey()
     {
-        
-    }
-    public AESKey DeriveAuthenticationKey(byte[] uid)
-    {
-        Helpers.ValidateUID(uid);
         return AESKey.Derive(Helpers.Concat(
-            new byte[] { 0x2d, 0x00, 0x3f, 0x78 },
-            uid));
+            new byte[] { 0x2d, 0x00, 0x3f, 0x78 }));
     }
-    public BoltcardKeys DeriveBoltcardKeys(IssuerKey issuerKey, byte[] uid)
+    public BoltcardKeys DeriveBoltcardKeys(IssuerKey issuerKey)
     {
-        return DeriveBoltcardKeys(issuerKey.DeriveEncryptionKey(), uid);
+        return DeriveBoltcardKeys(issuerKey.DeriveEncryptionKey());
     }
-    public BoltcardKeys DeriveBoltcardKeys(AESKey encryptionKey, byte[] uid)
+    public BoltcardKeys DeriveBoltcardKeys(AESKey encryptionKey)
     {
-        Helpers.ValidateUID(uid);
         var appMasterKey = AESKey.Derive(Helpers.Concat(
-            new byte[] { 0x2d, 0x00, 0x3f, 0x76 },
-            uid));
-        var authKey = DeriveAuthenticationKey(uid);
+            new byte[] { 0x2d, 0x00, 0x3f, 0x76 }));
+        var authKey = DeriveAuthenticationKey();
         var k1 = AESKey.Derive(Helpers.Concat(
-            new byte[] { 0x2d, 0x00, 0x3f, 0x79 },
-            uid));
+            new byte[] { 0x2d, 0x00, 0x3f, 0x79 }));
         var k2 = AESKey.Derive(Helpers.Concat(
-            new byte[] { 0x2d, 0x00, 0x3f, 0x7a },
-            uid));
+            new byte[] { 0x2d, 0x00, 0x3f, 0x7a }));
 
         return new BoltcardKeys(appMasterKey, encryptionKey, authKey, k1, k2);
     }
@@ -45,14 +34,10 @@ public record CardKey(AESKey AESKey)
     {
         if (!PICCData.ExtractPC(uri, out _, out var c))
             return false;
-        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData, payload);
+        return this.DeriveAuthenticationKey().CheckSunMac(c, piccData, payload);
     }
     public bool CheckSunMac([NotNullWhen(true)] string? c, BoltcardPICCData piccData, byte[]? payload = null)
     {
-        return this.DeriveAuthenticationKey(piccData.Uid).CheckSunMac(c, piccData, payload);
-    }
-    public byte[] ToBytes()
-    {
-        return AESKey.ToBytes();
+        return this.DeriveAuthenticationKey().CheckSunMac(c, piccData, payload);
     }
 }
