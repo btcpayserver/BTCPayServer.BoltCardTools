@@ -274,7 +274,11 @@ public class Ntag424
         try
         {
             var message = await this.ReadNDef(cancellationToken);
+            if (!NdefUriRecord.IsRecordType(message[0]))
+                return null;
             var uri = new NdefUriRecord(message[0]).Uri;
+            if (string.IsNullOrEmpty(uri))
+                return null;
             return new Uri(uri, UriKind.Absolute);
         }
         catch (NdefException)
