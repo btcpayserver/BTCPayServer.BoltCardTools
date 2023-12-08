@@ -125,13 +125,14 @@ public class Ntag424
     {
         return AuthenticateEV2(keyNo, key, false, cancellationToken);
     }
-    public Task<Session> AuthenticateEV2First(int keyNo, AESKey key, CancellationToken cancellationToken = default)
+    public Task<Session> AuthenticateEV2First(int keyNo, AESKey? key, CancellationToken cancellationToken = default)
     {
         return AuthenticateEV2(keyNo, key, true, cancellationToken);
     }
-    async Task<Session> AuthenticateEV2(int keyNo, AESKey key, bool first, CancellationToken cancellationToken = default)
+    async Task<Session> AuthenticateEV2(int keyNo, AESKey? key, bool first, CancellationToken cancellationToken = default)
     {
-        int sessionCounter = CurrentSession?.Counter ?? 0;
+        key ??= AESKey.Default;
+        int sessionCounter;
         if (first)
         {
             await IsoSelectFile(ISOLevel.Application);
@@ -143,7 +144,8 @@ public class Ntag424
                 throw new InvalidOperationException("Authentication required for AuthenticateEV2NonFirst");
             sessionCounter = CurrentSession.Counter;
         }
-
+        bool illegalCommandThrown = false;
+retry:
         NtagResponse resp;
         if (first)
         {
@@ -164,10 +166,19 @@ public class Ntag424
         var rndA = RandomNumberGenerator.GetBytes(16);
         var encRnd = key.Encrypt(Concat(rndA, rndBp));
         var secondPart = first ? NtagCommands.AuthenticateEV2FirstPart2 : NtagCommands.AuthenticateEV2NonFirstPart2;
-        resp = await SendAPDU(secondPart with
+        try
         {
-            Data = encRnd
-        }, cancellationToken);
+            resp = await SendAPDU(secondPart with
+            {
+                Data = encRnd
+            }, cancellationToken);
+        }
+        // Sometimes, the card returns this error, unsure why, but retrying the auth seems to work
+        catch (UnexpectedStatusException ex) when (first && !illegalCommandThrown && ex.Details?.Code.Equals("ILLEGAL_COMMAND_CODE", StringComparison.Ordinal) is true)
+        {
+            illegalCommandThrown = true;
+            goto retry;
+        }
 
         var data = key.Decrypt(resp.Data);
         var rndAp = RotateLeft(rndA);

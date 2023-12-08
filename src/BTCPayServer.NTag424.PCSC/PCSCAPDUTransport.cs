@@ -24,7 +24,7 @@ public class PCSCAPDUTransport : IAPDUTransport
                 int received = resp.Length;
                 var sc = CardReader.Transmit(apdu, resp, ref received);
                 if (sc != SCardError.Success)
-                    sc.Throw();
+                    sc.ThrowEx();
                 var sw1sw2 = (ushort)(resp[received - 2] << 8 | resp[received - 1]);
                 var data = resp[..(received - 2)];
                 return new NtagResponse(data, sw1sw2);
