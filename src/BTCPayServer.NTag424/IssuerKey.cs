@@ -22,13 +22,19 @@ public record IssuerKey(AESKey AESKey)
 
     public CardKey CreateCardKey(byte[] uid, int version)
     {
+        return CreateCardKey(uid, version, null);
+    }
+    public CardKey CreateCardKey(byte[] uid, int version, byte[]? additionalData)
+    {
         Helpers.ValidateUID(uid);
         if (version < 0)
             throw new ArgumentOutOfRangeException(nameof(version));
+        additionalData ??= Array.Empty<byte>();
         var k = AESKey.Derive(Helpers.Concat(
             new byte[] { 0x2d, 0x00, 0x3f, 0x75 },
             uid,
-            Helpers.UIntToBytesLE((uint)version)));
+            Helpers.UIntToBytesLE((uint)version),
+            additionalData));
         return new CardKey(k);
     }
 
