@@ -163,7 +163,7 @@ public class UnitTest1
     [Fact]
     public async Task CanAuthenticate()
     {
-        using var ctx = PCSCContext.Create();
+        using var ctx = await PCSCContext.WaitForCard();
         var ntag = ctx.CreateNTag424();
         var key = AESKey.Default;
         await ntag.AuthenticateEV2First(0, key);

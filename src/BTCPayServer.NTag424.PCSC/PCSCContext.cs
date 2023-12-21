@@ -95,7 +95,11 @@ waitStateChange:
                         var reader = new SCardReader(context);
                         res = reader.Connect(readerName, SCardShareMode.Shared, SCardProtocol.Any);
                         if (res == SCardError.Success)
+                        {
+                            // Somehow without this presenting the card is flaky
+                            Thread.Sleep(50);
                             return new PCSCContext(reader, context);
+                        }
                         goto rescanReaders;
                     }
                 }
