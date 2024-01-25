@@ -99,7 +99,7 @@ public record PICCData(byte[]? Uid, int? Counter)
         var queryString = uri.AbsoluteUri.Substring(queryStringIdx);
         var pm = Regex.Match(queryString, "p=([a-f0-9A-F]{32})");
         var cm = Regex.Match(queryString, "c=([a-f0-9A-F]{16})");
-        if (pm is null || cm is null)
+        if (!pm.Success || !cm.Success)
             return false;
         p = pm.Groups[1].Value;
         c = cm.Groups[1].Value;
