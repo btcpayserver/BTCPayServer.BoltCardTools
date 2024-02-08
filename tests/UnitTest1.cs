@@ -173,7 +173,6 @@ public class UnitTest1
         Assert.Equal(uid1.ToHex(), uid2.ToHex());
     }
 
-
     
     [Fact]
     public async Task CanDecryptAndCheckSUNMacOnDeterministicKey()

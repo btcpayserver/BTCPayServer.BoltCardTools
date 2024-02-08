@@ -302,20 +302,39 @@ retry:
     {
         await IsoSelectFile(ISOLevel.Application, cancellationToken);
         await IsoSelectFile(DataFile.NDEF, cancellationToken);
+        var aa = (await SendAPDU(NtagCommands.ISOReadBinary with
+        {
+            P1 = 0,
+            P2 = 0,
+            Le = 2
+        }, cancellationToken)).Data;
         var size = (await SendAPDU(NtagCommands.ISOReadBinary with
         {
             P1 = 0,
             P2 = 0,
             Le = 2
         }, cancellationToken)).Data[1];
-        var data = (await SendAPDU(NtagCommands.ISOReadBinary with
+        try
         {
-            P1 = 0,
-            P2 = 2,
-            Le = size
-        }, cancellationToken)).Data;
-        CurrentSession = null;
-        return NdefMessage.FromByteArray(data);
+            if (size == 0)
+            {
+                return new NdefMessage();
+            }
+            else
+            {
+                var data = (await SendAPDU(NtagCommands.ISOReadBinary with
+                {
+                    P1 = 0,
+                    P2 = 2,
+                    Le = size
+                }, cancellationToken)).Data;
+                return NdefMessage.FromByteArray(data);
+            }
+        }
+        finally
+        {
+            CurrentSession = null;
+        }
     }
 
     public async Task<byte[]> ReadFile(DataFile file, int offset, int length, CancellationToken cancellationToken = default)
@@ -368,6 +387,20 @@ retry:
                 GetFileNo(DataFile.NDEF),
                 new byte[] { 0x00, 0x00, 0x00 },
                 UIntTo3BytesLE(content.Length),
+                content
+            )
+        }, cancellationToken);
+    }
+    public async Task ResetNDef(CancellationToken cancellationToken = default)
+    {
+        var content = new byte[220];
+        await SendAPDU(NtagCommands.WriteData with
+        {
+            CommMode = await GetCommMode(DataFile.NDEF, AccessRight.Write, cancellationToken),
+            Data = Concat(
+                GetFileNo(DataFile.NDEF),
+                new byte[] { 0x00, 0x00, 0x00 },
+                new byte[] { (byte)content.Length, 0, 0 },
                 content
             )
         }, cancellationToken);
@@ -435,7 +468,7 @@ retry:
         if (CurrentSession!.KeyNo != 0)
             throw new InvalidOperationException("Authentication required with KeyNo 0");
 
-        await WriteNDef(new NdefMessage());
+        await ResetNDef();
         await ChangeFileSettings(file: DataFile.NDEF, new FileSettings(DataFile.NDEF));
 
         await ChangeKey(4, AESKey.Default, keys.K4);
