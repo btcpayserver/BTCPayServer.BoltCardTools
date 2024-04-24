@@ -58,7 +58,7 @@ public record BoltcardPICCData : PICCData
     {
         if (!ValidateP(p))
             return null;
-        var bytes = encryptionKey.Decrypt(p.HexToBytes());
+        var bytes = encryptionKey.Decrypt(p[0..32].HexToBytes());
         if (!ValidateBoltcardPICCData(bytes))
             return null;
         return new BoltcardPICCData(PICCData.Create(bytes));
@@ -120,8 +120,8 @@ public record PICCData(byte[]? Uid, int? Counter)
             return null;
         return TryBoltcardDecryptCheck(encryptionKey, authenticationKey, p, c, payload);
     }
-    internal static bool ValidateP(string p) => p != null && Regex.IsMatch(p, "[a-f0-9A-F]{32}");
-    internal static bool ValidateC(string c) => c != null && Regex.IsMatch(c, "[a-f0-9A-F]{16}");
+    internal static bool ValidateP([NotNullWhen(true)] string? p) => p is not null && Regex.IsMatch(p, "^[a-f0-9A-F]{32}");
+    internal static bool ValidateC([NotNullWhen(true)] string? c) => c is not null && Regex.IsMatch(c, "^[a-f0-9A-F]{16}");
 
     /// <summary>
     /// Decrypt the PICCData from the Boltcard and check the checksum.
@@ -137,7 +137,7 @@ public record PICCData(byte[]? Uid, int? Counter)
         if (!ValidateP(p) || !ValidateC(c))
             return null;
 
-        var bytes = encryptionKey.Decrypt(p.HexToBytes());
+        var bytes = encryptionKey.Decrypt(p[0..32].HexToBytes());
         PICCData piccData;
         try
         {

@@ -68,9 +68,9 @@ public class AESKey
     }
     public bool CheckSunMac([NotNullWhen(true)] string? mac, PICCData piccData, byte[]? payload = null)
     {
-        if (mac is null || !Regex.IsMatch(mac, "[a-f0-9A-F]{16}"))
+        if (!PICCData.ValidateC(mac))
             return false;
-        return CheckSunMac(mac.HexToBytes(), piccData, payload);
+        return CheckSunMac(mac[0..16].HexToBytes(), piccData, payload);
     }
 
     public byte[] GetSunMac(PICCData piccData, byte[]? payload = null)
