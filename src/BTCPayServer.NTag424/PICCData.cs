@@ -25,15 +25,14 @@ public record BoltcardPICCData : PICCData
 
 
     /// <summary>
-    /// Decrypt the PICCData from the BoltCard and check the checksum.
+    /// Decrypt the PICCData from the BoltCard. (The checksum isn't verified)
     /// </summary>
     /// <param name="encryptionKey">The encryption key (K1)</param>
     /// <param name="uri">The url with p= and c= parameters</param
-    /// <param name="payload">Optional payload committed by c</param>
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    /// <returns>The PICCData if it has been decrypted.</returns>
     public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, Uri? uri)
     {
-        if (!ExtractPC(uri, out var p, out var c))
+        if (!ExtractPC(uri, out var p, out _))
             return null;
 
         return TryDecrypt(encryptionKey, p);
@@ -48,12 +47,11 @@ public record BoltcardPICCData : PICCData
     }
 
     /// <summary>
-    /// Decrypt the PICCData from the Boltcard and check the checksum.
+    /// Decrypt the PICCData from the BoltCard. (The checksum isn't verified)
     /// </summary>
     /// <param name="encryptionKey">The encryption key (K1)</param>
     /// <param name="p">p= encrypted PICCData parameter</param>
-    /// <param name="c">c= checksum parameter</param>
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    /// <returns>The PICCData if it has been decrypted.</returns>
     public static BoltcardPICCData? TryDecrypt(AESKey encryptionKey, string p)
     {
         if (!ValidateP(p))

@@ -70,21 +70,20 @@ public record IssuerKey(AESKey AESKey)
     }
 
     /// <summary>
-    /// Decrypt the PICCData from the BoltCard and check the checksum.
+    /// Decrypt the PICCData from the BoltCard. (The checksum isn't verified)
     /// </summary>
     /// <param name="uri">The url with p= and c= parameters</param
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    /// <returns>The PICCData if it has been decrypted.</returns>
     public BoltcardPICCData? TryDecrypt(Uri? uri)
     {
         return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), uri);
     }
 
     /// <summary>
-    /// Decrypt the PICCData from the Boltcard and check the checksum.
+    /// Decrypt the PICCData from the BoltCard. (The checksum isn't verified)
     /// </summary>
-    /// <param name="encryptionKey">The encryption key (K1)</param>
     /// <param name="p">p= encrypted PICCData parameter</param>
-    /// <returns>The PICCData if the checksum passed verification or null.</returns>
+    /// <returns>The PICCData if it has been decrypted.</returns>
     public BoltcardPICCData? TryDecrypt(string p)
     {
         return BoltcardPICCData.TryDecrypt(DeriveEncryptionKey(), p);
