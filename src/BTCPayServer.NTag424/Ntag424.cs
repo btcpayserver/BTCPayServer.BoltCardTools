@@ -452,6 +452,16 @@ retry:
         await ResetCard(keys);
     }
 
+    public async Task<int> GetKeyVersion(int keyNo, CancellationToken cancellationToken = default)
+    {
+        var resp = await SendAPDU(
+            NtagCommands.GetKeyVersion with
+            {
+                Data = new byte[] { (byte)keyNo },
+            }, cancellationToken);
+        return resp.Data[0];
+    }
+
     /// <summary>
     /// Reset the card to factory settings using current application keys
     /// </summary>
@@ -534,21 +544,22 @@ retry:
         };
         await ChangeFileSettings(fileSettings: settings);
         await SetRandomUID();
+        var setupVersion = 1; // Match boltcard app creator
         if (newKeys.EncryptionKey != oldKeys.EncryptionKey)
-            await ChangeKey(1, newKeys.EncryptionKey, oldKeys.EncryptionKey);
+            await ChangeKey(1, newKeys.EncryptionKey, oldKeys.EncryptionKey, setupVersion);
 
         if (newKeys.AuthenticationKey != oldKeys.AuthenticationKey)
-            await ChangeKey(2, newKeys.AuthenticationKey, oldKeys.AuthenticationKey);
+            await ChangeKey(2, newKeys.AuthenticationKey, oldKeys.AuthenticationKey, setupVersion);
 
         if (newKeys.K3 != oldKeys.K3)
-            await ChangeKey(3, newKeys.K3, oldKeys.K3);
+            await ChangeKey(3, newKeys.K3, oldKeys.K3, setupVersion);
 
         if (newKeys.K4 != oldKeys.K4)
-            await ChangeKey(4, newKeys.K4, oldKeys.K4);
+            await ChangeKey(4, newKeys.K4, oldKeys.K4, setupVersion);
 
         if (newKeys.AppMasterKey != CurrentSession!.Key)
         {
-            await ChangeKey(0, newKeys.AppMasterKey); // No need of old key for 0
+            await ChangeKey(0, newKeys.AppMasterKey, version: setupVersion); // No need of old key for 0
             await AuthenticateEV2First(0, newKeys.AppMasterKey);
         }
     }

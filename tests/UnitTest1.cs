@@ -258,11 +258,21 @@ public class UnitTest1
             K4: new AESKey("00000000000000000000000000000005".HexToBytes()));
         // await ntag.ResetCard(keys);
         await ntag.SetupBoltcard("http://test.com", BoltcardKeys.Default, keys);
+        foreach (var i in new int[] { 0, 1, 2, 3, 4 })
+        {
+            Assert.Equal(1, await ntag.GetKeyVersion(i));
+        }
+        Logs.WriteLine((await ntag.GetKeyVersion(0)).ToString());
         var uri = await ntag.TryReadNDefURI();
         Assert.StartsWith("lnurlw://test.com/?p=", uri?.AbsoluteUri);
         var piccData = PICCData.TryBoltcardDecryptCheck(keys.EncryptionKey, keys.AuthenticationKey, uri);
         Assert.NotNull(piccData);
         await ntag.ResetCard(keys);
+        await ntag.AuthenticateEV2First(0, AESKey.Default);
+        foreach (var i in new int[] { 0, 1, 2, 3, 4 })
+        {
+            Assert.Equal(0, await ntag.GetKeyVersion(i));
+        }
     }
 
     [Fact]
