@@ -285,9 +285,9 @@ retry:
         try
         {
             var message = await this.ReadNDef(cancellationToken);
-            if (!NdefUriRecord.IsRecordType(message[0]))
+            if (message.IsEmpty || !NdefUriRecord.IsRecordType(message._Message[0]))
                 return null;
-            var uri = new NdefUriRecord(message[0]).Uri;
+            var uri = new NdefUriRecord(message._Message[0]).Uri;
             if (string.IsNullOrEmpty(uri))
                 return null;
             return new Uri(uri, UriKind.Absolute);
@@ -298,7 +298,7 @@ retry:
         }
     }
 
-    public async Task<NdefMessage> ReadNDef(CancellationToken cancellationToken = default)
+    public async Task<NDEFMessage> ReadNDef(CancellationToken cancellationToken = default)
     {
         await IsoSelectFile(ISOLevel.Application, cancellationToken);
         await IsoSelectFile(DataFile.NDEF, cancellationToken);
@@ -318,7 +318,7 @@ retry:
         {
             if (size == 0)
             {
-                return new NdefMessage();
+                return new NDEFMessage(new NdefMessage());
             }
             else
             {
@@ -328,7 +328,7 @@ retry:
                     P2 = 2,
                     Le = size
                 }, cancellationToken)).Data;
-                return NdefMessage.FromByteArray(data);
+                return new NDEFMessage(data);
             }
         }
         finally
@@ -373,9 +373,9 @@ retry:
         } };
     }
 
-    public async Task WriteNDef(NdefMessage message, CancellationToken cancellationToken = default)
+    public async Task WriteNDef(NDEFMessage message, CancellationToken cancellationToken = default)
     {
-        var ndefMessageBytes = message.ToByteArray();
+        var ndefMessageBytes = message.ToBytes();
         var content = new byte[220]; // Normally we have 256 bytes, but APDU has a size limit we need some margin
         content[0] = (byte)(ndefMessageBytes.Length >> 8);
         content[1] = (byte)ndefMessageBytes.Length;
@@ -516,7 +516,7 @@ retry:
         {
             new NdefUriRecord() { Uri = lnurlw }
         };
-        await WriteNDef(ndef);
+        await WriteNDef(new NDEFMessage(ndef));
         var ndefBytes = ndef.ToByteArray();
         var pIndex = Array.LastIndexOf(ndefBytes, (byte)'p') + 4;
         var cIndex = Array.LastIndexOf(ndefBytes, (byte)'c') + 4;
